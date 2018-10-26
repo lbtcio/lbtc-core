@@ -1397,6 +1397,17 @@ bool DPoS::WriteIrreversibleBlockInfo(const IrreversibleBlockInfo& info)
     return ret;
 }
 
+std::pair<uint64_t, uint256> DPoS::GetIrreversibleBlock()
+{
+	read_lock l(lockIrreversibleBlockInfo);
+	auto& m = cIrreversibleBlockInfo.mapHeightHash;
+	if(m.empty() == false) {
+		return std::make_pair(m.rbegin()->first, m.rbegin()->second);
+	} else {
+		return std::make_pair(0, uint256());
+	}
+}
+
 void DPoS::ProcessIrreversibleBlock(int64_t height, uint256 hash)
 {
 	if(fUseIrreversibleBlock == false) {

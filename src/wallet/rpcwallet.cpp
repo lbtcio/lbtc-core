@@ -4336,6 +4336,36 @@ UniValue getdelegatevotes(const JSONRPCRequest& request)
     return entry;
 }
 
+UniValue getirreversibleblock(const JSONRPCRequest& request)
+{
+    if (!EnsureWalletIsAvailable(request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() != 0)
+        throw runtime_error(
+            "getirreversibleblock\n"
+            "\nget irreversible block height and hash.\n"
+            + HelpRequiringPassphrase() +
+            "\nArguments:\n"
+            "\nResult:\n"
+            "{\n"
+            "   \"height\"            (numeric) The block height.\n"
+            "   \"hash\"              (string) The block hash.\n"
+            "}\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getirreversibleblock", "")
+            + HelpExampleRpc("getirreversibleblock", "")
+        );
+
+    UniValue result(UniValue::VOBJ);
+    auto&& info = DPoS::GetInstance().GetIrreversibleBlock();
+    if(info.first > 0) {
+        result.push_back(Pair("height", info.first));
+        result.push_back(Pair("hash", info.second.ToString()));
+    }
+    return result;
+}
+
 UniValue getdelegatefunds(const JSONRPCRequest& request)
 {
     if (!EnsureWalletIsAvailable(request.fHelp))
@@ -4552,6 +4582,7 @@ static const CRPCCommand commands[] =
     { "dpos",               "getdelegatefunds",         &getdelegatefunds,         true,   {"getdelegatefunds", "delegatename"} },
     { "dpos",               "listvoteddelegates",       &listvoteddelegates,       true,   {"listvoteddelegates", "address"} },
     { "dpos",               "listreceivedvotes",        &listreceivedvotes,        true,   {"listreceivedvotes", "delegatename"} },
+    { "dpos",               "getirreversibleblock",     &getirreversibleblock,     true,   {"getirreversibleblock"} },
     { "govern",             "submitbill",               &submitbill,               true,   {"submitbill"} },
     { "govern",             "votebill",                 &votebill,                 true,   {"votebill"} },
     { "govern",             "listbills",                &listbills,                true,   {"listbills"} },

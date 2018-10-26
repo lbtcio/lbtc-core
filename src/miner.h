@@ -288,10 +288,11 @@ public:
     void ProcessIrreversibleBlock(int64_t height, uint256 hash);
     bool IsValidBlockCheckIrreversibleBlock(int64_t height, uint256 hash);
     void AddIrreversibleBlock(int64_t height, uint256 hash);
+    std::pair<uint64_t, uint256> GetIrreversibleBlock();
 
     const int nFirstIrreversibleThreshold = 90;
     const int nSecondIrreversibleThreshold = 67;
-    const int nMaxIrreversibleCount = 1000;
+    const int nMaxIrreversibleCount = 10000;
 
 private:
     bool CheckBlock(const CBlock& block, bool fIsCheckDelegateInfo);
