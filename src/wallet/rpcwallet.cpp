@@ -3035,7 +3035,7 @@ extern UniValue importprunedfunds(const JSONRPCRequest& request);
 extern UniValue removeprunedfunds(const JSONRPCRequest& request);
 extern UniValue importmulti(const JSONRPCRequest& request);
 
-static void SendWithOpreturn(const CBitcoinAddress &address, CWalletTx& wtxNew, uint64_t fee, const vector<unsigned char>& opreturn)
+static void SendWithOpreturn(const CBitcoinAddress &address, CWalletTx& wtxNew, uint64_t fee, unsigned int nAppID, const vector<unsigned char>& vctAppData)
 {
     CAmount curBalance = pwalletMain->GetAddressBalance(address.Get());
     std::string strError;
@@ -3050,7 +3050,7 @@ static void SendWithOpreturn(const CBitcoinAddress &address, CWalletTx& wtxNew, 
     if (pwalletMain->GetBroadcastTransactions() && !g_connman)
         throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
 
-    vector<unsigned char> opdata = pwalletMain->CreateOpReturn(opreturn);
+    vector<unsigned char> opdata = pwalletMain->CreateOpReturn(nAppID, vctAppData);
     if(opdata.empty()) {
         strError = strprintf("Error: CreateOpReturn");
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
@@ -3125,7 +3125,7 @@ UniValue registe(const JSONRPCRequest& request)
     LOCK2(cs_main, pwalletMain->cs_wallet);
     EnsureWalletIsUnlocked();
 
-    SendWithOpreturn(address, wtx, OP_REGISTER_FORGER_FEE, opreturn);
+    SendWithOpreturn(address, wtx, OP_REGISTER_FORGER_FEE, AppID::DPOS, opreturn);
 
     return wtx.GetHash().GetHex();
 }
@@ -3418,7 +3418,7 @@ UniValue registercommittee(const JSONRPCRequest& request)
     LOCK2(cs_main, pwalletMain->cs_wallet);
     EnsureWalletIsUnlocked();
 
-    SendWithOpreturn(address, wtx, OP_REGISTER_COMMITTEE_FEE, opreturn);
+    SendWithOpreturn(address, wtx, OP_REGISTER_COMMITTEE_FEE, AppID::DPOS, opreturn);
 
     return wtx.GetHash().GetHex();
 }
@@ -3503,7 +3503,7 @@ UniValue votecommittee(const JSONRPCRequest& request)
     LOCK2(cs_main, pwalletMain->cs_wallet);
     EnsureWalletIsUnlocked();
 
-    SendWithOpreturn(address, wtx, OP_VOTE_COMMITTEE_FEE, opreturn);
+    SendWithOpreturn(address, wtx, OP_VOTE_COMMITTEE_FEE, AppID::DPOS, opreturn);
     return wtx.GetHash().GetHex();
 }
 
@@ -3540,7 +3540,7 @@ UniValue cancelvotecommittee(const JSONRPCRequest& request)
     LOCK2(cs_main, pwalletMain->cs_wallet);
     EnsureWalletIsUnlocked();
 
-    SendWithOpreturn(address, wtx, OP_VOTE_COMMITTEE_FEE, opreturn);
+    SendWithOpreturn(address, wtx, OP_VOTE_COMMITTEE_FEE, AppID::DPOS, opreturn);
     return wtx.GetHash().GetHex();
 }
 
@@ -3796,7 +3796,7 @@ UniValue submitbill(const JSONRPCRequest& request)
     LOCK2(cs_main, pwalletMain->cs_wallet);
     EnsureWalletIsUnlocked();
 
-    SendWithOpreturn(address, wtx, OP_SUBMIT_BILL_FEE, opreturn);
+    SendWithOpreturn(address, wtx, OP_SUBMIT_BILL_FEE, AppID::DPOS, opreturn);
 
     UniValue obj(UniValue::VOBJ);
     obj.push_back(Pair("txid", wtx.GetHash().GetHex()));
@@ -3838,7 +3838,7 @@ UniValue votebill(const JSONRPCRequest& request)
     LOCK2(cs_main, pwalletMain->cs_wallet);
     EnsureWalletIsUnlocked();
 
-    SendWithOpreturn(address, wtx, OP_VOTE_BILL_FEE, opreturn);
+    SendWithOpreturn(address, wtx, OP_VOTE_BILL_FEE, AppID::DPOS, opreturn);
     return wtx.GetHash().GetHex();
 }
 
@@ -4116,7 +4116,7 @@ UniValue vote(const JSONRPCRequest& request) {
     LOCK2(cs_main, pwalletMain->cs_wallet);
     EnsureWalletIsUnlocked();
 
-    SendWithOpreturn(address, wtx, OP_VOTE_FORGER_FEE, opreturn);
+    SendWithOpreturn(address, wtx, OP_VOTE_FORGER_FEE, AppID::DPOS, opreturn);
 
     return wtx.GetHash().GetHex();
 }
@@ -4157,7 +4157,7 @@ UniValue cancelvote(const JSONRPCRequest& request) {
     LOCK2(cs_main, pwalletMain->cs_wallet);
     EnsureWalletIsUnlocked();
 
-    SendWithOpreturn(address, wtx, OP_CANCEL_VOTE_FORGER_FEE, opreturn);
+    SendWithOpreturn(address, wtx, OP_CANCEL_VOTE_FORGER_FEE, AppID::DPOS, opreturn);
 
     return wtx.GetHash().GetHex();
 }

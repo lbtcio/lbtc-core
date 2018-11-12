@@ -14,6 +14,11 @@
 #include "script/script.h"
 #include "votedb.h"
 
+enum AppID{
+    DPOS = 0,
+    TOKEN,
+};
+
 struct COpData{
     uint8_t opcode;
 };
@@ -29,7 +34,7 @@ struct CRegisterForgerData : public COpData {
 };
 
 struct CVoteForgerData : public COpData {
-	std::set<CKeyID> forgers;
+    std::set<CKeyID> forgers;
 
     template<class Archive>
     void serialize(Archive& ar, const unsigned int version)
@@ -39,7 +44,7 @@ struct CVoteForgerData : public COpData {
 };
 
 struct CCancelVoteForgerData : public COpData {
-	std::set<CKeyID> forgers;
+    std::set<CKeyID> forgers;
 
     template<class Archive>
     void serialize(Archive& ar, const unsigned int version)

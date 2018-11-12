@@ -809,7 +809,7 @@ public:
     bool FundTransaction(CMutableTransaction& tx, CAmount& nFeeRet, bool overrideEstimatedFeeRate, const CFeeRate& specificFeeRate, int& nChangePosInOut, std::string& strFailReason, bool includeWatching, bool lockUnspents, const std::set<int>& setSubtractFeeFromOutputs, bool keepReserveKey = true, const CTxDestination& destChange = CNoDestination());
 
     CScript GetChangeScript(std::set<std::pair<const CWalletTx*,unsigned int> > &setCoins);
-    std::vector<unsigned char> CreateOpReturn(const std::vector<unsigned char>& data);
+    std::vector<unsigned char> CreateOpReturn(unsigned int nAppID, const std::vector<unsigned char>& vctAppData);
     /**
      * Create a new transaction paying the recipients with a set of coins
      * selected by SelectCoins(); Also create the change output, when needed

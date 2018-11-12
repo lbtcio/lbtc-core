@@ -3254,11 +3254,14 @@ CScript CWallet::GetChangeScript(set<pair<const CWalletTx*,unsigned int> > &setC
     return script;
 }
 
-std::vector<unsigned char> CWallet::CreateOpReturn(const std::vector<unsigned char>& data)
+std::vector<unsigned char> CWallet::CreateOpReturn(unsigned int nAppID, const std::vector<unsigned char>& data)
 {
-    unsigned char c = 0;
-    std::vector<unsigned char> vData(4, c);
-	vData.insert(vData.end(), data.begin(), data.end());
+    std::vector<unsigned char> vData(4);
+    vData[0] = nAppID >> 24;
+    vData[1] = nAppID << 8 >> 24;
+    vData[2] = nAppID << 16 >> 24;
+    vData[3] = nAppID << 24 >> 24;
+    vData.insert(vData.end(), data.begin(), data.end());
     return ToByteVector(CScript() << OP_RETURN <<  vData);
 }
 
