@@ -1,4 +1,5 @@
 
+#include "base58.h"
 #include "module.h"
 
 bool OpreturnModule::RegisteEvaluator(std::shared_ptr<BaseEvaluator> evaluator)
@@ -46,7 +47,7 @@ bool OpreturnModule::Do(const CBlock& block, uint32_t nHeight, std::map<uint256,
 			auto it = mapEvaluator.find(id);
 			if(it != mapEvaluator.end()) {
 				auto hash = ptx->GetHash();
-				it->second->Do(nHeight, hash, ptx->address, data, mapTxFee[hash]);
+				it->second->Do(TokenMsg(nHeight, mapTxFee[hash], hash, CBitcoinAddress(ptx->address).ToString()), data);
 			}
 		}
 	}

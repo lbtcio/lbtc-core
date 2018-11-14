@@ -7,11 +7,21 @@
 #include "primitives/transaction.h"
 #include "script/standard.h"
 
+struct TokenMsg {
+	uint64_t nBlockHeight;
+	uint64_t fee;
+	uint256 txHash;
+	std::string fromAddress;
+	TokenMsg(uint64_t nBlockHeight, uint64_t fee, uint256 txHash, const std::string& fromAddress)
+		: nBlockHeight(nBlockHeight), fee(fee), txHash(txHash), fromAddress(fromAddress) {}
+	TokenMsg() {}
+};
+
 class BaseEvaluator {
 public:
-	virtual bool Do(int64_t height, const uint256& txHash, const CTxDestination& address, const std::string& data, int64_t fee) = 0;
-	virtual bool Commit(int64_t height) = 0;
-	virtual bool Rollback(int64_t height) = 0;
+	virtual bool Do(const TokenMsg& tokenMsg, const std::string& data) = 0;
+	virtual bool Commit(uint64_t height) = 0;
+	virtual bool Rollback(uint64_t height) = 0;
 	uint32_t GetID() {return nID;}
 	void SetID(uint32_t id) {nID = id;}
 
