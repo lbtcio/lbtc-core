@@ -3,15 +3,19 @@
 #define _DB_KV_H_
 
 #include "myserialize.h"
+#include <boost/thread/shared_mutex.hpp>
 #include <string>
 #include <vector>
 #include <map>
 #include <list>
 #include <memory>
+#include <stdint.h>
 
 template<class Key, class Value>
 class dbKV {
 public:
+	typedef boost::shared_lock<boost::shared_mutex> read_lock;
+	typedef boost::unique_lock<boost::shared_mutex> write_lock;
 
 	enum db_undo_type{
 		insert,
@@ -35,14 +39,18 @@ public:
 	   	Value value;
 	};
 
-	dbKV() {}
-	dbKV(bool bAutoIncrementKey) {
+	dbKV() : plock(std::make_shared<boost::shared_mutex>()) {}
+
+	dbKV(bool bAutoIncrementKey)
+		: plock(std::make_shared<boost::shared_mutex>())
+	{
 		this->bAutoIncrementKey = bAutoIncrementKey;
 		nKey = 1;
 	}
 
 	bool Set(const std::string& transactionID, const Key& k, const Value& v)
 	{
+		write_lock w(*plock);
 		bool ret = false;
 		auto it = mapKV.find(k);
 		if(it == mapKV.end()) {
@@ -64,9 +72,10 @@ public:
 	}
 
 	//if success return autoincrease key, otherwise return negative value
-	long Set(const std::string& transactionID, const Value& v)
+	int64_t Set(const std::string& transactionID, const Value& v)
 	{
-		long ret = -1;
+		write_lock w(*plock);
+		int64_t ret = -1;
 		if(bAutoIncrementKey) {
 			ret = nKey;
 			if(mapUndo.find(transactionID) == mapUndo.end()) {
@@ -82,6 +91,7 @@ public:
 
 	bool Delete(const std::string& transactionID, const Key& k)
 	{
+		write_lock w(*plock);
 		bool ret = false;
 		auto it = mapKV.find(k);
 		if(it != mapKV.end()) {
@@ -98,6 +108,7 @@ public:
 
 	bool Get(Value* pv, const Key& k)
 	{
+		read_lock r(*plock);
 		bool ret = false;
 		auto it = mapKV.find(k);	
 		if(it != mapKV.end()) {
@@ -110,8 +121,28 @@ public:
 		return ret;
 	}
 
+	Value* Get(const Key& k)
+	{
+		read_lock r(*plock);
+		Value* ret = NULL;
+		auto it = mapKV.find(k);
+		if(it != mapKV.end()) {
+			ret = &it->second;
+		}
+
+		return ret;
+	}
+
+	void Iterate(std::function<void(const Key&, const Value&)> f)
+	{
+		read_lock r(*plock);
+		for(auto& item : mapKV)
+			f(item.first, item.second);
+	}
+
 	bool Commit(const std::string& transactionID)
 	{
+		write_lock w(*plock);
 		bool ret = false;		
 		auto it = mapUndo.find(transactionID);
 		if(it != mapUndo.end()) {
@@ -130,6 +161,7 @@ public:
 	//it must call in reverse order with commit
 	bool Rollback(const std::string& transactionID)
 	{
+		write_lock w(*plock);
 		bool ret = false;
 		if(listUndo.back() != transactionID) {
 			return false;	
@@ -164,8 +196,9 @@ public:
 	}
 
 private:
+	std::shared_ptr<boost::shared_mutex> plock;
 	bool bAutoIncrementKey;
-	long nKey;
+	int64_t nKey;
 	std::map<Key, Value> mapKV;
 	std::map<std::string, std::vector<db_undo> > mapUndo;
 	std::list<std::string> listUndo;
