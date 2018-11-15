@@ -110,6 +110,9 @@ BITCOIN_CORE_H = \
   memusage.h \
   merkleblock.h \
   miner.h \
+  token_db.h \
+  token.pb.h \
+  token_evaluator.h \
   module.h \
   net.h \
   net_processing.h \
@@ -190,6 +193,9 @@ libbitcoin_server_a_SOURCES = \
   dbwrapper.cpp \
   merkleblock.cpp \
   miner.cpp \
+  token_db.cpp \
+  token.pb.cc \
+  token_evaluator.cpp \
   module.cpp \
   net.cpp \
   net_processing.cpp \

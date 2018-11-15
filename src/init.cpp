@@ -66,6 +66,8 @@
 #include "zmq/zmqnotificationinterface.h"
 #endif
 
+#include "token_db.h"
+
 bool fFeeEstimatesInitialized = false;
 static const bool DEFAULT_PROXYRANDOMIZE = true;
 static const bool DEFAULT_REST_ENABLE = false;
@@ -620,6 +622,10 @@ void ThreadImport(std::vector<boost::filesystem::path> vImportFiles)
 
     {
     CImportingNow imp;
+
+    if(GetBoolArg("-isdealopreturn", false)) {
+        TokenDB::GetInstance()->Init(GetDataDir().string());
+    }
 
     // -reindex
     if (fReindex) {
