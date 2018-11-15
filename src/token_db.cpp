@@ -85,6 +85,17 @@ TokenInfo* TokenDB::GetToken(int64_t nTokenId)
 	return dbToken.Get(nTokenId);
 }
 
+std::map<int64_t, TokenInfo> TokenDB::GetTokens()
+{
+	std::map<int64_t, TokenInfo> tokens;
+    auto f = [&tokens](const int64_t& key, const TokenInfo& value) -> void {
+		tokens[key] = value;
+    };
+
+	dbToken.Iterate(f);
+	return tokens;
+}
+
 int64_t TokenDB::SetAddressId(uint64_t nBlockHeight, const std::string& strAddress)
 {
 	int64_t ret = dbIdAddress.Set(std::to_string(nBlockHeight), strAddress);
@@ -127,6 +138,22 @@ uint64_t TokenDB::GetBalance(int64_t nTokenId, int64_t nAddressId)
 	return ret;
 }
 
+//reuslt: tokenid - > amount
+std::map<int64_t, uint64_t> TokenDB::GetBalances(int64_t nAddressId)
+{
+	std::map<int64_t, uint64_t> balances;
+
+	std::map<int64_t, dbKV<int64_t, uint64_t>> mapdbBalance;
+	uint64_t nAmount = 0;
+	for(auto& item : mapdbBalance) {
+		if((nAmount = GetBalance(item.first, nAddressId)) > 0) {
+			balances[item.first] = nAmount;
+		}
+	}
+
+	return balances;
+}
+
 std::map<uint64_t, uint64_t>* TokenDB::SetLockBalance(uint64_t nBlockHeight, int64_t nTokenId, int64_t nAddressId, std::map<uint64_t, uint64_t>* pLockBalance)
 {
 	std::map<uint64_t, uint64_t>* ret = NULL;
@@ -149,6 +176,20 @@ std::map<uint64_t, uint64_t>* TokenDB::GetLockBalance(int64_t nTokenId, int64_t 
 	}
 
 	return ret;
+}
+
+//reuslt: tokenid - > [ expirtyheight -> amount]
+std::map<uint64_t, std::map<uint64_t, uint64_t>> TokenDB::GetLockBalances(int64_t nAddressId)
+{
+	std::map<uint64_t, std::map<uint64_t, uint64_t>> lockbalances;
+	std::map<uint64_t, uint64_t>* lockbalance = NULL;
+	for(auto& item : mapdbLockBalance) {
+		if((lockbalance = GetLockBalance(item.first, nAddressId))) {
+			lockbalances[item.first] = *lockbalance;
+		}
+	}
+
+	return lockbalances;
 }
 
 uint64_t TokenDB::UnlockBalance(uint64_t nBlockHeight, int64_t nTokenId, int64_t nAddressId)

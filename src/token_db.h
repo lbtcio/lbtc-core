@@ -54,6 +54,7 @@ public:
 
 	int64_t SetToken(uint64_t nBlockHeight, const TokenInfo& cTokenInfo);
 	TokenInfo* GetToken(int64_t nTokenId);
+	std::map<int64_t, TokenInfo> GetTokens();
 
 	int64_t SetAddressId(uint64_t nBlockHeight, const std::string& strAddress);
 	int64_t GetOrSetAddressId(uint64_t nBlockHeight, const std::string& strAddress);
@@ -61,8 +62,11 @@ public:
 
 	uint64_t GetBalance(int64_t nTokenId, int64_t nAddressId);
 	uint64_t SetBalance(uint64_t nBlockHeight, int64_t nTokenId, int64_t nAddressId, uint64_t nBalance);
+	std::map<int64_t, uint64_t> GetBalances(int64_t nAddressId);
+
 	std::map<uint64_t, uint64_t>* SetLockBalance(uint64_t nBlockHeight, int64_t nTokenId, int64_t nAddressId, std::map<uint64_t, uint64_t>* pLockBalance);
 	std::map<uint64_t, uint64_t>* GetLockBalance(int64_t nTokenId, int64_t nAddressId);
+	std::map<uint64_t, std::map<uint64_t, uint64_t>> GetLockBalances(int64_t nAddressId);
 
 	void UnlockBalance(uint64_t nBlockHeight);
 
