@@ -3412,9 +3412,14 @@ UniValue registername(const JSONRPCRequest& request)
         return "Invalid Bitcoin address";
 
     std::string name = request.params[1].get_str();
-
     if(CheckStringFormat(name, 2, 16, true) == false)
         return "Invalid name";
+
+    if(DposDB::GetInstance()->GetAddressName(request.params[0].get_str()).empty() == false)
+        return "Address has registed";
+
+    if(DposDB::GetInstance()->GetNameAddress(request.params[1].get_str()).empty() == false)
+        return "Name has registed";
 
     CWalletTx wtx;
     LbtcPbMsg::RegisteNameMsg msg;
