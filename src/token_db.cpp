@@ -14,19 +14,19 @@ TokenDB::~TokenDB()
 
 bool TokenDB::Load()
 {
-	MyUnserialize(strDataPath +"TokenInfo", dbToken);
-	MyUnserialize(strDataPath +"AddressID", dbAddressId, dbIdAddress);
-	MyUnserialize(strDataPath +"TokenHolder", mapdbBalance);
-	MyUnserialize(strDataPath +"LockTokenHolder", mapdbLockBalance);
+	MyUnserialize(strDataPath +"/TokenInfo.dat", dbToken);
+	MyUnserialize(strDataPath +"/AddressID.dat", dbAddressId, dbIdAddress);
+	MyUnserialize(strDataPath +"/TokenHolder.dat", mapdbBalance);
+	MyUnserialize(strDataPath +"/LockTokenHolder.dat", mapdbLockBalance);
 }
 
 bool TokenDB::Save()
 {
 	if(strDataPath.empty() == false) {
-		MySerialize(strDataPath +"TokenInfo", dbToken);
-		MySerialize(strDataPath +"AddressID", dbAddressId, dbIdAddress);
-		MySerialize(strDataPath +"TokenHolder", mapdbBalance);
-		MySerialize(strDataPath +"LockTokenHolder", mapdbLockBalance);
+		MySerialize(strDataPath +"/TokenInfo.dat", dbToken);
+		MySerialize(strDataPath +"/AddressID.dat", dbAddressId, dbIdAddress);
+		MySerialize(strDataPath +"/TokenHolder.dat", mapdbBalance);
+		MySerialize(strDataPath +"/LockTokenHolder.dat", mapdbLockBalance);
 	}
 }
 

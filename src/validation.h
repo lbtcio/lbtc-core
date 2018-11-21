@@ -58,6 +58,7 @@ static const CAmount OP_REGISTER_FORGER_FEE = 1 * COIN;
 static const CAmount OP_VOTE_FORGER_FEE = 0.01 * COIN;
 static const CAmount OP_CANCEL_VOTE_FORGER_FEE = 0.01 * COIN;
 static const CAmount OP_REGISTER_COMMITTEE_FEE = 1 * COIN;
+static const CAmount OP_REGISTER_NAME_FEE = 1 * COIN;
 static const CAmount OP_VOTE_COMMITTEE_FEE = 0.01 * COIN;
 static const CAmount OP_SUBMIT_BILL_FEE = 3 * COIN;
 static const CAmount OP_VOTE_BILL_FEE = 0.01 * COIN;

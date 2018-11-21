@@ -35,6 +35,9 @@
 #include "rpcwallet.h"
 #include "consensus/merkle.h"
 #include "miner.h"
+#include "../lbtc.pb.h"
+#include "../dpos_db.h"
+#include "../module.h"
 
 using namespace std;
 
@@ -3384,6 +3387,99 @@ string JsonToStruct(CBitcoinAddress& address, CVoteBillData& data, const JSONRPC
     return ret;
 }
 
+UniValue registername(const JSONRPCRequest& request)
+{
+    if (!EnsureWalletIsAvailable(request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() != 2)
+        throw runtime_error(
+            "registername address name"
+            "\nregister address name.\n"
+            + HelpRequiringPassphrase() +
+            "\nArguments:\n"
+            "1. \"address\"             (string, required) The lbtc address.\n"
+            "2. \"name\"                (string, required) The address name.\n"
+            "\nResult:\n"
+            "\"txid:\"                  (string) The transaction id.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("registername", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" \"testname\"")
+            + HelpExampleRpc("registername", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"testname\"")
+        );
+
+    CBitcoinAddress address(request.params[0].get_str());
+    if (!address.IsValid())
+        return "Invalid Bitcoin address";
+
+    std::string name = request.params[1].get_str();
+
+    if(CheckStringFormat(name, 2, 16, true) == false)
+        return "Invalid name";
+
+    CWalletTx wtx;
+    LbtcPbMsg::RegisteNameMsg msg;
+    msg.set_opid(1);
+    msg.set_name(name);
+
+    std::string data;
+    msg.SerializeToString(&data);
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+    EnsureWalletIsUnlocked();
+
+    SendWithOpreturn(address, wtx, OP_REGISTER_COMMITTEE_FEE, AppID::DPOS, vector<unsigned char>(data.begin(), data.end()));
+
+    return wtx.GetHash().GetHex();
+}
+
+UniValue getaddressname(const JSONRPCRequest& request)
+{
+    if (!EnsureWalletIsAvailable(request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() != 1)
+        throw runtime_error(
+            "getaddressname address"
+            "\nget address name.\n"
+            + HelpRequiringPassphrase() +
+            "\nArguments:\n"
+            "1. \"address\"             (string, required) The lbtc address.\n"
+            "\nResult:\n"
+            "\"name:\"                  (string) The address name.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getaddressname", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\"")
+            + HelpExampleRpc("getaddressname", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\"")
+        );
+
+    CBitcoinAddress address(request.params[0].get_str());
+    if(address.IsValid() == false)
+        return "Invalid Bitcoin address";
+
+    return DposDB::GetInstance()->GetAddressName(request.params[0].get_str());
+}
+
+UniValue getnameaddress(const JSONRPCRequest& request)
+{
+    if (!EnsureWalletIsAvailable(request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() != 1)
+        throw runtime_error(
+            "getnameaddress address"
+            "\nget nmae address.\n"
+            + HelpRequiringPassphrase() +
+            "\nArguments:\n"
+            "1. \"name:\"               (string, required) The address name.\n"
+            "\nResult:\n"
+            "\"address\"                (string, required) The lbtc address.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getnameaddress", "\"testname\"")
+            + HelpExampleRpc("getnameaddress", "\"testname\"")
+        );
+
+    return DposDB::GetInstance()->GetNameAddress(request.params[0].get_str());
+}
+
 UniValue registercommittee(const JSONRPCRequest& request)
 {
     if (!EnsureWalletIsAvailable(request.fHelp))
@@ -4583,6 +4679,9 @@ static const CRPCCommand commands[] =
     { "dpos",               "listvoteddelegates",       &listvoteddelegates,       true,   {"listvoteddelegates", "address"} },
     { "dpos",               "listreceivedvotes",        &listreceivedvotes,        true,   {"listreceivedvotes", "delegatename"} },
     { "dpos",               "getirreversibleblock",     &getirreversibleblock,     true,   {"getirreversibleblock"} },
+    { "dpos",               "registername",             &registername,             true,   {"registername", "name"} },
+    { "dpos",               "getaddressname",           &getaddressname,           true,   {"getaddressname", "address"} },
+    { "dpos",               "getnameaddress",           &getnameaddress,           true,   {"getnameaddress", "name"} },
     { "govern",             "submitbill",               &submitbill,               true,   {"submitbill"} },
     { "govern",             "votebill",                 &votebill,                 true,   {"votebill"} },
     { "govern",             "listbills",                &listbills,                true,   {"listbills"} },

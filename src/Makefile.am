@@ -111,8 +111,10 @@ BITCOIN_CORE_H = \
   merkleblock.h \
   miner.h \
   token_db.h \
-  token.pb.h \
+  dpos_db.h \
+  lbtc.pb.h \
   token_evaluator.h \
+  dpos_evaluator.h \
   module.h \
   net.h \
   net_processing.h \
@@ -194,8 +196,9 @@ libbitcoin_server_a_SOURCES = \
   merkleblock.cpp \
   miner.cpp \
   token_db.cpp \
-  token.pb.cc \
+  dpos_db.cpp \
   token_evaluator.cpp \
+  dpos_evaluator.cpp \
   module.cpp \
   net.cpp \
   net_processing.cpp \
@@ -244,6 +247,7 @@ libbitcoin_wallet_a_SOURCES = \
   wallet/wallet.cpp \
   wallet/walletdb.cpp \
   policy/rbf.cpp \
+  lbtc.pb.cc \
   $(BITCOIN_CORE_H)
 
 # crypto primitives library

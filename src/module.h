@@ -7,26 +7,29 @@
 #include "primitives/transaction.h"
 #include "script/standard.h"
 
-struct TokenMsg {
+bool CheckStringFormat(const std::string& name, uint32_t nMinLen, uint32_t nMaxLen, bool bContainUnderline);
+
+struct TxMsg {
 	uint64_t nBlockHeight;
 	uint64_t fee;
 	uint256 txHash;
 	std::string fromAddress;
-	TokenMsg(uint64_t nBlockHeight, uint64_t fee, uint256 txHash, const std::string& fromAddress)
+	TxMsg(uint64_t nBlockHeight, uint64_t fee, uint256 txHash, const std::string& fromAddress)
 		: nBlockHeight(nBlockHeight), fee(fee), txHash(txHash), fromAddress(fromAddress) {}
-	TokenMsg() {}
+	TxMsg() {}
+};
+
+enum EvaluatorID {
+	DPOS_EVALUTOR = 0,
+	TOKEN_EVALUTOR = 1,
 };
 
 class BaseEvaluator {
 public:
-	virtual bool Do(const TokenMsg& tokenMsg, const std::string& data) = 0;
+	virtual bool Do(const TxMsg& tokenMsg, const std::string& data) = 0;
 	virtual bool Commit(uint64_t height) = 0;
 	virtual bool Rollback(uint64_t height) = 0;
-	uint32_t GetID() {return nID;}
-	void SetID(uint32_t id) {nID = id;}
-
-private:
-	uint32_t nID;
+	virtual uint32_t GetID() {return 0;}
 };
 
 class OpreturnModule {

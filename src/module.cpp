@@ -2,6 +2,28 @@
 #include "base58.h"
 #include "module.h"
 
+bool CheckStringFormat(const std::string& name, uint32_t nMinLen, uint32_t nMaxLen, bool bContainUnderline)
+{
+    bool ret = false;
+    if(name.length() >= nMinLen && name.length() <= nMaxLen) {
+        ret = true;
+        for(auto& item : name) {
+            if(bContainUnderline && (uint8_t)item == 95) {
+                continue;
+            }
+
+            if(((item >= 48 && item <= 57)
+                || (item >= 65 && item <= 90)
+                || (item >= 97 && item <= 122)) == false) {
+                ret = false;
+                break;
+            }
+        }
+    }
+
+    return ret;
+}
+
 bool OpreturnModule::RegisteEvaluator(std::shared_ptr<BaseEvaluator> evaluator)
 {
 	bool ret = false;
@@ -25,12 +47,10 @@ bool OpreturnModule::AnalysisTx(uint32_t& id, std::string& data, const CTransact
 		opcodetype opcode;
 		std::vector<unsigned char> vchRet;
 		if (script.GetOp2(iter, opcode, &vchRet)) {
-			if(vchRet.size() == 4) {
+			if(vchRet.size() > 4) {
 				id = (vchRet[0] << 24) + (vchRet[1] << 16) + (vchRet[2] << 8) + vchRet[3];
-				if (script.GetOp2(iter, opcode, &vchRet)) {
-					data.append(vchRet.begin(), vchRet.end());
-					ret = true;
-				}
+				data.append(vchRet.begin() + 4, vchRet.end());
+				ret = true;
 			}
 		}
 	}
@@ -47,7 +67,7 @@ bool OpreturnModule::Do(const CBlock& block, uint32_t nHeight, std::map<uint256,
 			auto it = mapEvaluator.find(id);
 			if(it != mapEvaluator.end()) {
 				auto hash = ptx->GetHash();
-				it->second->Do(TokenMsg(nHeight, mapTxFee[hash], hash, CBitcoinAddress(ptx->address).ToString()), data);
+				it->second->Do(TxMsg(nHeight, mapTxFee[hash], hash, CBitcoinAddress(ptx->address).ToString()), data);
 			}
 		}
 	}

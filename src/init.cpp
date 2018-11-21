@@ -67,6 +67,9 @@
 #endif
 
 #include "token_db.h"
+#include "dpos_db.h"
+#include "dpos_evaluator.h"
+#include "token_evaluator.h"
 
 bool fFeeEstimatesInitialized = false;
 static const bool DEFAULT_PROXYRANDOMIZE = true;
@@ -623,8 +626,13 @@ void ThreadImport(std::vector<boost::filesystem::path> vImportFiles)
     {
     CImportingNow imp;
 
+    auto path = GetDataDir().string() + "/mydb/";
+    boost::filesystem::create_directory(path);
+    DposDB::GetInstance()->Init(path);
+    OpreturnModule::GetInstance().RegisteEvaluator(std::make_shared<DposEvaluator>());
     if(GetBoolArg("-isdealopreturn", false)) {
-        TokenDB::GetInstance()->Init(GetDataDir().string());
+        TokenDB::GetInstance()->Init(path);
+        OpreturnModule::GetInstance().RegisteEvaluator(std::make_shared<TokenEvaluator>());
     }
 
     // -reindex

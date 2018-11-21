@@ -4797,9 +4797,7 @@ void ProcessDPoSConnectBlock(const CBlock& block, uint64_t nBlockHeight)
     CalculateBalance(block, true, &mapTxFee);
     DoVoting(block, nBlockHeight, mapTxFee, false);
 
-    if(GetBoolArg("-isdealopreturn", false)) {
-        OpreturnModule::GetInstance().Do(block, nBlockHeight, mapTxFee);
-    }
+    OpreturnModule::GetInstance().Do(block, nBlockHeight, mapTxFee);
 }
 
 void ProcessDPoSDisconnectBlock(const CBlock& block, uint64_t nBlockHeight)
@@ -4810,9 +4808,7 @@ void ProcessDPoSDisconnectBlock(const CBlock& block, uint64_t nBlockHeight)
     CalculateBalance(block, false, &mapTxFee);
     DoVoting(block, nBlockHeight, mapTxFee, true);
 
-    if(GetBoolArg("-isdealopreturn", false)) {
-        OpreturnModule::GetInstance().Rollback(block.GetHash(), nBlockHeight);
-    }
+    OpreturnModule::GetInstance().Rollback(block.GetHash(), nBlockHeight);
 }
 
 bool RepairDPoSData(int64_t nOldBlockHeight, const std::string& strOldBlockHash)

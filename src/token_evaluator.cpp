@@ -1,17 +1,17 @@
 
-#include "token.pb.h"
+#include "lbtc.pb.h"
 #include "token_db.h"
 #include "token_evaluator.h"
 
-bool TokenEvaluator::Do(const TokenMsg& msg, const std::string& data)
+bool TokenEvaluator::Do(const TxMsg& msg, const std::string& data)
 {
 	bool ret = false;
-	PbTokenMsg::TokenMsg baseTokenMsg;
+	LbtcPbMsg::Msg baseTokenMsg;
 	if (baseTokenMsg.ParseFromString(data)) {
 		switch(baseTokenMsg.opid()) {
 		case TokenOpid::CREATETOKEN:
 			{
-			PbTokenMsg::CreateTokenMsg msgCreateToken;
+			LbtcPbMsg::CreateTokenMsg msgCreateToken;
 			if (msgCreateToken.ParseFromString(data)) {
 				ret = CreateToken(CreateTokenMsg(msg.nBlockHeight, msg.fee, msg.txHash, msg.fromAddress, msgCreateToken.tokenaddress(), msgCreateToken.name(), msgCreateToken.symbol(), msgCreateToken.totalamount(), msgCreateToken.digits()));
 			}
@@ -20,7 +20,7 @@ bool TokenEvaluator::Do(const TokenMsg& msg, const std::string& data)
 
 		case TokenOpid::TRANSFRERTOKEN:
 			{
-			PbTokenMsg::TransferTokenMsg msgTransferToken;
+			LbtcPbMsg::TransferTokenMsg msgTransferToken;
 			if (msgTransferToken.ParseFromString(data)) {
 				ret = TransferToken(TransferTokenMsg(msg.nBlockHeight, msg.fee, msg.txHash, msg.fromAddress, msgTransferToken.dstaddress(), msgTransferToken.tokenid(), msgTransferToken.amount()));
 			}
@@ -29,7 +29,7 @@ bool TokenEvaluator::Do(const TokenMsg& msg, const std::string& data)
 
 		case TokenOpid::LOCKTOEKN:
 			{
-			PbTokenMsg::LockTokenMsg msgLockToken;
+			LbtcPbMsg::LockTokenMsg msgLockToken;
 			if (msgLockToken.ParseFromString(data)) {
 				ret = LockToken(LockTokenMsg(msg.nBlockHeight, msg.fee, msg.txHash, msg.fromAddress, msgLockToken.dstaddress(), msgLockToken.tokenid(), msgLockToken.amount(), msgLockToken.expiryheight()));
 			}
@@ -55,7 +55,7 @@ bool TokenEvaluator::Rollback(uint64_t nBlockHeight)
 	return true;
 }
 
-bool TokenEvaluator::TransferToken(const TokenMsg& tokenMsg)
+bool TokenEvaluator::TransferToken(const TxMsg& tokenMsg)
 {
 	TransferTokenMsg& msg = (TransferTokenMsg&)tokenMsg;
 	auto& db = *TokenDB::GetInstance();
@@ -76,7 +76,7 @@ bool TokenEvaluator::TransferToken(const TokenMsg& tokenMsg)
 	return true;
 }
 
-bool TokenEvaluator::LockToken(const TokenMsg& tokenMsg)
+bool TokenEvaluator::LockToken(const TxMsg& tokenMsg)
 {
 	LockTokenMsg& msg = (LockTokenMsg&)tokenMsg;
 	auto& db = *TokenDB::GetInstance();
@@ -102,7 +102,7 @@ bool TokenEvaluator::LockToken(const TokenMsg& tokenMsg)
 	return true;
 }
 
-bool TokenEvaluator::CreateToken(const TokenMsg& tokenMsg)
+bool TokenEvaluator::CreateToken(const TxMsg& tokenMsg)
 {
 	CreateTokenMsg& msg = (CreateTokenMsg&)tokenMsg;
 	auto& db = *TokenDB::GetInstance();
