@@ -21,6 +21,7 @@ static const char DB_TXINDEX = 't';
 static const char DB_BLOCK_INDEX = 'b';
 
 static const char DB_ADDRESSINDEX = 'a';
+static const char DB_TOKEN_HISTORY_ADDRESSINDEX = 'c';
 
 static const char DB_BEST_BLOCK = 'B';
 static const char DB_FLAG = 'F';
@@ -28,7 +29,7 @@ static const char DB_REINDEX_FLAG = 'R';
 static const char DB_LAST_BLOCK = 'l';
 
 
-CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe, true) 
+CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe, true)
 {
 }
 
@@ -155,14 +156,14 @@ bool CBlockTreeDB::WriteBatchSync(const std::vector<std::pair<int, const CBlockF
 
 bool CBlockTreeDB::WriteAddressIndex(const std::vector<std::pair<CAddressIndexKey, CAmount > >&vect) {
     CDBBatch batch(*this);
-    for (std::vector<std::pair<CAddressIndexKey, CAmount> >::const_iterator it=vect.begin(); it!=vect.end(); it++)
+    for (auto it=vect.begin(); it!=vect.end(); it++)
         batch.Write(std::make_pair(DB_ADDRESSINDEX, it->first), it->second);
     return WriteBatch(batch);
 }
 
 bool CBlockTreeDB::EraseAddressIndex(const std::vector<std::pair<CAddressIndexKey, CAmount > >&vect) {
     CDBBatch batch(*this);
-    for (std::vector<std::pair<CAddressIndexKey, CAmount> >::const_iterator it=vect.begin(); it!=vect.end(); it++)
+    for (auto it=vect.begin(); it!=vect.end(); it++)
         batch.Erase(std::make_pair(DB_ADDRESSINDEX, it->first));
     return WriteBatch(batch);
 }
@@ -189,6 +190,53 @@ bool CBlockTreeDB::ReadAddressIndex(uint160 addressHash, int type,
             CAmount nValue;
             if (pcursor->GetValue(nValue)) {
                 addressIndex.push_back(std::make_pair(key.second, nValue));
+                pcursor->Next();
+            } else {
+                return error("failed to get address index value");
+            }
+        } else {
+            break;
+        }
+    }
+
+    return true;
+}
+
+bool CBlockTreeDB::WriteTokenHistory(const std::vector<std::pair<CTokenHistoryAddressIndexKey, std::string> > &history)
+{
+    CDBBatch batch(*this);
+    for (auto it = history.begin(); it != history.end(); it++)
+        batch.Write(std::make_pair(DB_TOKEN_HISTORY_ADDRESSINDEX, it->first), it->second);
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::EraseTokenHistory(const std::vector<CTokenHistoryAddressIndexKey> &history)
+{
+    CDBBatch batch(*this);
+    for (auto it = history.begin(); it != history.end(); it++)
+        batch.Erase(std::make_pair(DB_TOKEN_HISTORY_ADDRESSINDEX, *it));
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::ReadTokenHistory(std::vector<std::pair<CTokenHistoryAddressIndexKey, std::string> > &history, uint160 addressHash, int type, int64_t tokenID, int height)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+
+    if (height > 0) {
+        pcursor->Seek(std::make_pair(DB_TOKEN_HISTORY_ADDRESSINDEX, CAddressIndexIteratorHeightKey(type, addressHash, height)));
+    } else {
+        pcursor->Seek(std::make_pair(DB_TOKEN_HISTORY_ADDRESSINDEX, CAddressIndexIteratorKey(type, addressHash)));
+    }
+
+    while (pcursor->Valid()) {
+        boost::this_thread::interruption_point();
+        std::pair<char,CTokenHistoryAddressIndexKey> key;
+        if (pcursor->GetKey(key) && key.first == DB_TOKEN_HISTORY_ADDRESSINDEX
+			&& key.second.hashBytes == addressHash
+			&& (tokenID < 0 || key.second.tokenID == tokenID)) {
+			std::string value;
+            if (pcursor->GetValue(value)) {
+                history.push_back(std::make_pair(key.second, value));
                 pcursor->Next();
             } else {
                 return error("failed to get address index value");
@@ -267,12 +315,12 @@ bool CBlockTreeDB::LoadBlockIndexGuts(boost::function<CBlockIndex*(const uint256
     return true;
 }
 
-bool CBlockTreeDB::DeleteBlock(const CBlockIndex *pindex) 
+bool CBlockTreeDB::DeleteBlock(const CBlockIndex *pindex)
 {
-    CDBBatch batch(*this); 
-    batch.Erase(std::make_pair(DB_BLOCK_FILES, pindex->nFile)); 
-    batch.Erase(std::make_pair(DB_BLOCK_INDEX, pindex->GetBlockHash())); 
-    
-    return WriteBatch(batch, true); 
+    CDBBatch batch(*this);
+    batch.Erase(std::make_pair(DB_BLOCK_FILES, pindex->nFile));
+    batch.Erase(std::make_pair(DB_BLOCK_INDEX, pindex->GetBlockHash()));
+
+    return WriteBatch(batch, true);
 }
 

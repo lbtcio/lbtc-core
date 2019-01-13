@@ -22,6 +22,7 @@ struct RegisteNameMsg : public TxMsg {
 class DposEvaluator : public BaseEvaluator {
 public:
 	bool Do(const TxMsg& msg, const std::string& data);
+	bool Done(uint64_t height) {return true;}
 	bool Commit(uint64_t nBlockHeight);
 	bool Rollback(uint64_t nBlockHeight);
 	uint32_t GetID() {return EvaluatorID::DPOS_EVALUTOR;}

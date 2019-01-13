@@ -702,3 +702,94 @@ bool ParseFixedPoint(const std::string &val, int decimals, int64_t *amount_out)
     return true;
 }
 
+const uint64_t MAX_TOKEN_AMOUNT	= 10000000000000000000u;
+static inline bool ProcessMantissaDigitUnsign(char ch, uint64_t &mantissa, int &mantissa_tzeros)
+{
+    if(ch == '0')
+        ++mantissa_tzeros;
+    else {
+        for (int i=0; i<=mantissa_tzeros; ++i) {
+            if (mantissa > (MAX_TOKEN_AMOUNT / 10ul))
+                return false; /* overflow */
+            mantissa *= 10;
+        }
+        mantissa += ch - '0';
+        mantissa_tzeros = 0;
+    }
+    return true;
+}
+
+bool ParseFixedPointUnsign(const std::string &val, int decimals, uint64_t *amount_out)
+{
+    uint64_t mantissa = 0;
+    uint64_t exponent = 0;
+    int mantissa_tzeros = 0;
+    int ptr = 0;
+    int end = val.size();
+    int point_ofs = 0;
+
+    if (ptr < end)
+    {
+        if (val[ptr] == '0') {
+            /* pass single 0 */
+            ++ptr;
+        } else if (val[ptr] >= '1' && val[ptr] <= '9') {
+            while (ptr < end && val[ptr] >= '0' && val[ptr] <= '9') {
+                if (!ProcessMantissaDigitUnsign(val[ptr], mantissa, mantissa_tzeros))
+                    return false; /* overflow */
+                ++ptr;
+            }
+        } else return false; /* missing expected digit */
+    } else return false; /* empty string or loose '-' */
+    if (ptr < end && val[ptr] == '.')
+    {
+        ++ptr;
+        if (ptr < end && val[ptr] >= '0' && val[ptr] <= '9')
+        {
+            while (ptr < end && val[ptr] >= '0' && val[ptr] <= '9') {
+                if (!ProcessMantissaDigitUnsign(val[ptr], mantissa, mantissa_tzeros))
+                    return false; /* overflow */
+                ++ptr;
+                ++point_ofs;
+            }
+        } else return false; /* missing expected digit */
+    }
+    if (ptr < end && (val[ptr] == 'e' || val[ptr] == 'E'))
+    {
+        ++ptr;
+        if (ptr < end && val[ptr] == '+')
+            ++ptr;
+        if (ptr < end && val[ptr] >= '0' && val[ptr] <= '9') {
+            while (ptr < end && val[ptr] >= '0' && val[ptr] <= '9') {
+                if (exponent > (MAX_TOKEN_AMOUNT / 10LL))
+                    return false; /* overflow */
+                exponent = exponent * 10 + val[ptr] - '0';
+                ++ptr;
+            }
+        } else return false; /* missing expected digit */
+    }
+    if (ptr != end)
+        return false; /* trailing garbage */
+
+    exponent = exponent - point_ofs + mantissa_tzeros;
+
+
+    /* convert to one 64-bit fixed-point value */
+    exponent += decimals;
+    if (exponent >= 18)
+        return false; /* cannot represent values larger than or equal to 10^(18-decimals) */
+
+    for (unsigned int i=0; i < exponent; ++i) {
+        if (mantissa > (MAX_TOKEN_AMOUNT / 10ul))
+            return false; /* overflow */
+        mantissa *= 10;
+    }
+    if (mantissa > MAX_TOKEN_AMOUNT)
+        return false; /* overflow */
+
+    if (amount_out)
+        *amount_out = mantissa;
+
+    return true;
+}
+

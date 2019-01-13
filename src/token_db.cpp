@@ -1,6 +1,10 @@
 
 #include "token_db.h"
 #include "myserialize.h"
+#include "address_index.h"
+#include "base58.h"
+#include "txdb.h"
+#include "validation.h"
 
 TokenDB::TokenDB()
 	: dbToken(true), dbIdAddress(true)
@@ -18,6 +22,8 @@ bool TokenDB::Load()
 	MyUnserialize(strDataPath +"/AddressID.dat", dbAddressId, dbIdAddress);
 	MyUnserialize(strDataPath +"/TokenHolder.dat", mapdbBalance);
 	MyUnserialize(strDataPath +"/LockTokenHolder.dat", mapdbLockBalance);
+	MyUnserialize(strDataPath +"/TokenHistory.dat", mapHeightTokenHistory);
+	return true;
 }
 
 bool TokenDB::Save()
@@ -27,7 +33,9 @@ bool TokenDB::Save()
 		MySerialize(strDataPath +"/AddressID.dat", dbAddressId, dbIdAddress);
 		MySerialize(strDataPath +"/TokenHolder.dat", mapdbBalance);
 		MySerialize(strDataPath +"/LockTokenHolder.dat", mapdbLockBalance);
+		MySerialize(strDataPath +"/TokenHistory.dat", mapHeightTokenHistory);
 	}
+	return true;
 }
 
 bool TokenDB::Commit(uint64_t nBlockHeight)
@@ -42,6 +50,14 @@ bool TokenDB::Commit(uint64_t nBlockHeight)
 	for(auto& item : mapdbLockBalance)
 		item.second.Commit(std::to_string(nBlockHeight));
 
+	for(auto it = mapHeightTokenHistory.begin(); it != mapHeightTokenHistory.end(); ) {
+		if(it->first <= nBlockHeight) {
+			EraseLeveldb(it->first);
+			it = mapHeightTokenHistory.erase(it);
+		} else {
+			break;
+		}
+	}
 	return true;
 }
 
@@ -54,6 +70,9 @@ bool TokenDB::Rollback(uint64_t nBlockHeight)
 		item.second.Rollback(std::to_string(nBlockHeight));
 	for(auto& item : mapdbLockBalance)
 		item.second.Rollback(std::to_string(nBlockHeight));
+
+	EraseLeveldb(nBlockHeight);
+	mapHeightTokenHistory.erase(nBlockHeight);
 
 	return true;
 }
@@ -70,6 +89,10 @@ int64_t TokenDB::SetToken(uint64_t nBlockHeight, const TokenInfo& cTokenInfo)
 		if(cTokenInfo.tokenAddress == value.tokenAddress) {
 			bIsInvalid = true;
 		}
+
+		if(cTokenInfo.fromAddress == value.fromAddress && cTokenInfo.symbol == value.symbol) {
+			bIsInvalid = true;
+		}
     };
 	dbToken.Iterate(f);
 
@@ -83,6 +106,20 @@ int64_t TokenDB::SetToken(uint64_t nBlockHeight, const TokenInfo& cTokenInfo)
 TokenInfo* TokenDB::GetToken(int64_t nTokenId)
 {
 	return dbToken.Get(nTokenId);
+}
+
+TokenInfo* TokenDB::GetToken(const std::string& strTokenAddress)
+{
+	TokenInfo* ret = NULL;
+	auto f = [&ret, &strTokenAddress](const int64_t& key, const TokenInfo& value) -> void {
+		if(ret == NULL && value.tokenAddress == strTokenAddress) {
+			ret = (TokenInfo*)&value;
+			ret->id = key;
+		}
+	};
+
+	dbToken.Iterate(f);
+	return ret;
 }
 
 std::map<int64_t, TokenInfo> TokenDB::GetTokens()
@@ -242,4 +279,54 @@ void TokenDB::UnlockBalance(uint64_t nBlockHeight)
 	}
 
 	return;
+}
+
+bool TokenDB::SetTokenHistory(uint64_t height, const std::string& txhash, const TokenHistory& history)
+{
+	bool ret = false;
+	mapHeightTokenHistory[height][txhash] = history;
+	return ret;
+}
+
+bool TokenDB::WriteLeveldb(uint64_t height)
+{
+	bool ret = false;
+	auto it = mapHeightTokenHistory.find(height);
+	if(it != mapHeightTokenHistory.end()) {
+		std::vector<std::pair<CTokenHistoryAddressIndexKey, std::string> > history;
+
+		uint160 hashBytes;
+		int type = 0;
+		for(auto item : it->second) {
+			CBitcoinAddress(item.second.fromaddress).GetIndexKey(hashBytes, type);
+			history.push_back(std::make_pair(CTokenHistoryAddressIndexKey(type, hashBytes, height, item.second.tokenid), item.second.txhash));
+
+			CBitcoinAddress(item.second.dstaddress).GetIndexKey(hashBytes, type);
+			history.push_back(std::make_pair(CTokenHistoryAddressIndexKey(type, hashBytes, height, item.second.tokenid), item.second.txhash));
+		}
+
+		ret = pblocktree->WriteTokenHistory(history);
+	}
+	return ret;
+}
+
+bool TokenDB::EraseLeveldb(uint64_t height)
+{
+	bool ret = false;
+	auto it = mapHeightTokenHistory.find(height);
+	if(it != mapHeightTokenHistory.end()) {
+		std::vector<CTokenHistoryAddressIndexKey> history;
+
+		uint160 hashBytes;
+		int type = 0;
+		for(auto item : it->second) {
+			CBitcoinAddress(item.second.fromaddress).GetIndexKey(hashBytes, type);
+			history.push_back(CTokenHistoryAddressIndexKey(type, hashBytes, height, item.second.tokenid));
+			CBitcoinAddress(item.second.dstaddress).GetIndexKey(hashBytes, type);
+			history.push_back(CTokenHistoryAddressIndexKey(type, hashBytes, height, item.second.tokenid));
+		}
+
+		ret = pblocktree->EraseTokenHistory(history);
+	}
+	return ret;
 }

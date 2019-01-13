@@ -132,6 +132,10 @@ public:
     bool ReadAddressIndex(uint160 addressHash, int type,
                           std::vector<std::pair<CAddressIndexKey, CAmount> > &addressIndex,
                           int start = 0, int end = 0);
+
+    bool WriteTokenHistory(const std::vector<std::pair<CTokenHistoryAddressIndexKey, std::string> > &history);
+    bool EraseTokenHistory(const std::vector<CTokenHistoryAddressIndexKey> &history);
+    bool ReadTokenHistory(std::vector<std::pair<CTokenHistoryAddressIndexKey, std::string> > &history, uint160 addressHash, int type, int64_t tokenID, int height);
 };
 
 #endif // BITCOIN_TXDB_H

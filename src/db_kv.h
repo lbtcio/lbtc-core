@@ -39,9 +39,7 @@ public:
 	   	Value value;
 	};
 
-	dbKV() : plock(std::make_shared<boost::shared_mutex>()) {}
-
-	dbKV(bool bAutoIncrementKey)
+	dbKV(bool bAutoIncrementKey = false)
 		: plock(std::make_shared<boost::shared_mutex>())
 	{
 		this->bAutoIncrementKey = bAutoIncrementKey;

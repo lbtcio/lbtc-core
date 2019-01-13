@@ -1,4 +1,5 @@
 
+#include "validation.h"
 #include "base58.h"
 #include "module.h"
 
@@ -58,21 +59,70 @@ bool OpreturnModule::AnalysisTx(uint32_t& id, std::string& data, const CTransact
 	return ret;
 }
 
+bool ExtractAddress(std::string& address, const CTxIn& vin)
+{
+	bool ret = false;
+
+	uint256 hashBlock;
+	CTransactionRef tx;
+	if (vin.prevout.hash.IsNull() == false && GetTransaction(vin.prevout.hash, tx, Params().GetConsensus(), hashBlock, true)) {
+		CTxDestination dest;
+		if(ExtractDestination(tx->vout[vin.prevout.n].scriptPubKey, dest)) {
+			address = CBitcoinAddress(dest).ToString();
+			ret = true;
+		}
+	}
+
+	return ret;
+}
+
 bool OpreturnModule::Do(const CBlock& block, uint32_t nHeight, std::map<uint256, uint64_t>& mapTxFee)
 {
 	uint32_t id;
 	std::string data;
+	std::set<std::shared_ptr<BaseEvaluator>> setEvaluate;
 	for(auto& ptx : block.vtx) {
-		if(AnalysisTx(id, data, *ptx)) {
+		std::string address;
+		ExtractAddress(address, ptx->vin[0]);
+
+		if(address.empty() == false && AnalysisTx(id, data, *ptx)) {
 			auto it = mapEvaluator.find(id);
 			if(it != mapEvaluator.end()) {
+				setEvaluate.insert(it->second);
 				auto hash = ptx->GetHash();
-				it->second->Do(TxMsg(nHeight, mapTxFee[hash], hash, CBitcoinAddress(ptx->address).ToString()), data);
+				it->second->Do(TxMsg(nHeight, mapTxFee[hash], hash, address), data);
 			}
 		}
 	}
 
+	for(auto& it : setEvaluate) {
+		it->Done(nHeight);
+	}
+
     return true;
+}
+
+bool OpreturnModule::TxToJson(UniValue& json, const CTransaction& tx)
+{
+	CScript script;
+	CTxDestination dest;
+	ExtractDestination(script, dest);
+
+	bool ret = false;
+	uint32_t id;
+	std::string data;
+
+	std::string address;
+	ExtractAddress(address, tx.vin[0]);
+
+	if(AnalysisTx(id, data, tx)) {
+		auto it = mapEvaluator.find(id);
+		if(it != mapEvaluator.end()) {
+			ret = it->second->TxToJson(json, address, data);
+		}
+	}
+
+	return ret;
 }
 
 bool OpreturnModule::Commit(uint256 hash, int64_t height)

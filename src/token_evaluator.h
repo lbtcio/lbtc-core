@@ -6,11 +6,12 @@
 #include <string>
 
 #include "module.h"
+#include "lbtc.pb.h"
 
 enum TokenOpid {
 	CREATETOKEN = 1,
 	TRANSFRERTOKEN,
-	LOCKTOEKN,
+	LOCKTOKEN,
 };
 
 struct CreateTokenMsg : public TxMsg {
@@ -49,14 +50,20 @@ struct LockTokenMsg : public TxMsg {
 class TokenEvaluator : public BaseEvaluator {
 public:
 	bool Do(const TxMsg& tokenMsg, const std::string& data);
+	bool Done(uint64_t height);
 	bool Commit(uint64_t nBlockHeight);
 	bool Rollback(uint64_t nBlockHeight);
 	uint32_t GetID() {return EvaluatorID::TOKEN_EVALUTOR;}
+	bool TxToJson(UniValue& json, const std::string& address, const std::string& data);
 
 private:
 	bool TransferToken(const TxMsg& msg);
 	bool LockToken(const TxMsg& msg);
 	bool CreateToken(const TxMsg& msg);
 };
+
+std::string IsValid(LbtcPbMsg::CreateTokenMsg& pbTokenMsg);
+std::string IsValid(LbtcPbMsg::TransferTokenMsg& msg);
+std::string IsValid(LbtcPbMsg::LockTokenMsg& msg);
 
 #endif

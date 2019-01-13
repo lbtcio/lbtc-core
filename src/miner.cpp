@@ -38,6 +38,8 @@
 #include <queue>
 #include <utility>
 
+#include "module.h"
+
 typedef boost::shared_lock<boost::shared_mutex> read_lock;
 typedef boost::unique_lock<boost::shared_mutex> write_lock;
 
@@ -1502,6 +1504,8 @@ void DPoS::AddIrreversibleBlock(int64_t height, uint256 hash)
 	while((int64_t)cIrreversibleBlockInfo.mapHeightHash.size() >= nMaxIrreversibleCount) {
 		cIrreversibleBlockInfo.mapHeightHash.erase(cIrreversibleBlockInfo.mapHeightHash.begin());
 	}
+
+	OpreturnModule::GetInstance().Commit(hash, height);
 
 	cIrreversibleBlockInfo.mapHeightHash.insert(std::make_pair(height, hash));
 

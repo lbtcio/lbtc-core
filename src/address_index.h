@@ -14,6 +14,51 @@
 #include <vector>
 
 #include <boost/unordered_map.hpp>
+
+struct CTokenHistoryAddressIndexKey {
+    unsigned int type;
+    uint160 hashBytes;
+    int blockHeight;
+    int64_t tokenID;
+
+    size_t GetSerializeSize() const {
+        return 36;
+    }
+    template<typename Stream>
+    //void Serialize(Stream& s, int nType, int nVersion) const {
+    void Serialize(Stream& s) const {
+        ser_writedata8(s, type);
+        //hashBytes.Serialize(s, nType, nVersion);
+        hashBytes.Serialize(s);
+        ser_writedata32be(s, blockHeight);
+        ser_writedata64(s, tokenID);
+    }
+
+    template<typename Stream>
+    //void Unserialize(Stream& s, int nType, int nVersion) {
+    void Unserialize(Stream& s) {
+        type = ser_readdata8(s);
+        hashBytes.Unserialize(s);
+        blockHeight = ser_readdata32be(s);
+        tokenID = ser_readdata64(s);
+    }
+
+    CTokenHistoryAddressIndexKey(unsigned int type, uint160 hashBytes, int blockHeight, int64_t tokenID)
+        : type(type), hashBytes(hashBytes), blockHeight(blockHeight), tokenID(tokenID) {}
+
+    CTokenHistoryAddressIndexKey() {
+        SetNull();
+    }
+
+    void SetNull() {
+        type = 0;
+        hashBytes.SetNull();
+        blockHeight = 0;
+        tokenID = 0;
+    }
+
+};
+
 struct CAddressIndexKey {
     unsigned int type;
     uint160 hashBytes;

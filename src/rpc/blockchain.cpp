@@ -34,6 +34,8 @@
 #include <condition_variable>
 using namespace std;
 
+#include "../token_db.h"
+
 struct CUpdatedBlock
 {
     uint256 hash;
@@ -759,6 +761,73 @@ UniValue getaddresstxids(const JSONRPCRequest& request)
         //delta.push_back(Pair("address", address));
         delta.push_back(Pair("time", (uint64_t)chainActive[it->first.blockHeight]->nTime));
         result.push_back(delta);
+    }
+
+    return result;
+}
+
+UniValue getaddresstokentxids(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() < 2)
+        throw runtime_error(
+            "getaddresstokentxids address startheight tokenaddress\n"
+            "\nReturns transactions on the address.\n"
+            "\nArguments:\n"
+            "1. address           (string, required) The address\n"
+            "2. startheight       (string, required) Fetch transaction id from the set startblocknumber\n"
+            "3. tokenaddress      (string, optional) The token address\n"
+            "\nResult:\n"
+            "[\n"
+                "{\n"
+                    "\"txid\"          (string) The transaction hash\n"
+                    "\"tokenid\"       (number) The token id\n"
+                    "\"tokenaddress\"  (string) The token address\n"
+                    "\"height\"        (number) The block height\n"
+                "}\n"
+            "]\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getaddresstokentxids", "\"15meUQSFQMUS6vUkw8D2htgkpxiNnSXBaT\" \"200\"")
+            + HelpExampleCli("getaddresstokentxids", "\"15meUQSFQMUS6vUkw8D2htgkpxiNnSXBaT\" \"200\" \"1G55ovuQ5JXAJYw2YpWfNj5f4WkR1rwzQ3\"")
+            + HelpExampleRpc("getaddresstokentxids", "\"15meUQSFQMUS6vUkw8D2htgkpxiNnSXBaT\", \"200\"")
+            + HelpExampleRpc("getaddresstokentxids", "\"15meUQSFQMUS6vUkw8D2htgkpxiNnSXBaT\", \"200\", \"1G55ovuQ5JXAJYw2YpWfNj5f4WkR1rwzQ3\"")
+        );
+
+    CBitcoinAddress address(request.params[0].get_str());
+    uint160 hashBytes;
+    int type = 0;
+    if (!address.GetIndexKey(hashBytes, type)) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+    }
+    int startBlockHeigh = atoi(request.params[1].get_str().c_str());
+    int64_t tokenID = -1;
+    std::string tokenAddress;
+    TokenDB* ptokendb = TokenDB::GetInstance();
+
+    if(request.params.size() == 3) {
+        tokenAddress = request.params[2].get_str();
+        auto token = ptokendb->GetToken(tokenAddress);
+        if(token == NULL) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+        }
+        tokenID = token->id;
+    }
+
+    LOCK(cs_main);
+
+    std::vector<std::pair<CTokenHistoryAddressIndexKey, std::string> > history;
+    if (!pblocktree->ReadTokenHistory(history, hashBytes, type, tokenID, startBlockHeigh)) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available for address");
+    }
+
+    UniValue result(UniValue::VARR);
+    for( auto it = history.begin(); it != history.end(); ++ it) {
+        UniValue item(UniValue::VOBJ);
+        item.push_back(Pair("txid", it->second));
+        item.push_back(Pair("tokenid", (int64_t)it->first.tokenID));
+        auto token = ptokendb->GetToken(it->first.tokenID);
+        item.push_back(Pair("tokenaddress", token->tokenAddress));
+        item.push_back(Pair("height", (int64_t)it->first.blockHeight));
+        result.push_back(item);
     }
 
     return result;
@@ -1566,6 +1635,7 @@ static const CRPCCommand commands[] =
     { "blockchain",         "getblock",               &getblock,               true,  {"blockhash","verbose"} },
     { "blockchain",         "getblockhash",           &getblockhash,           true,  {"height"} },
     { "blockchain",         "getaddresstxids",        &getaddresstxids,        true,  {"address"} },
+    { "blockchain",         "getaddresstokentxids",   &getaddresstokentxids,        true,  {"address"} },
     { "blockchain",         "getblockheader",         &getblockheader,         true,  {"blockhash","verbose"} },
     { "blockchain",         "getchaintips",           &getchaintips,           true,  {} },
     { "blockchain",         "getdifficulty",          &getdifficulty,          true,  {} },

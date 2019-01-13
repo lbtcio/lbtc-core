@@ -9,6 +9,7 @@
 #include "db_kv.h"
 
 struct TokenInfo {
+	uint64_t id;
 	std::string fromAddress;
 	std::string tokenAddress;
 	std::string name;
@@ -18,17 +19,38 @@ struct TokenInfo {
 
 	TokenInfo() {}
 	TokenInfo(const std::string& fromAddress, const std::string& tokenAddress, const std::string& name, const std::string& symbol, uint64_t totalamount, uint8_t digits)
-		: fromAddress(fromAddress), tokenAddress(tokenAddress), name(name), symbol(symbol), totalamount(totalamount), digits(digits) {}
+		: id(0), fromAddress(fromAddress), tokenAddress(tokenAddress), name(name), symbol(symbol), totalamount(totalamount), digits(digits) {}
 
     template<class Archive>
     void serialize(Archive& ar, const unsigned int version)
     {
-        ar & fromAddress;
-        ar & tokenAddress;
-        ar & name;
-        ar & symbol;
-        ar & totalamount;
-        ar & digits;
+		ar & id;
+		ar & fromAddress;
+		ar & tokenAddress;
+		ar & name;
+		ar & symbol;
+		ar & totalamount;
+		ar & digits;
+    }
+};
+
+struct TokenHistory {
+	int64_t tokenid;
+	std::string fromaddress;
+	std::string dstaddress;
+	std::string txhash;
+
+	TokenHistory() {}
+	TokenHistory(int64_t tokenid, const std::string& fromaddress, const std::string& dstaddress, const std::string& txhash)
+			: tokenid(tokenid), fromaddress(fromaddress), dstaddress(dstaddress), txhash(txhash) {}
+
+    template<class Archive>
+    void serialize(Archive& ar, const unsigned int version)
+    {
+		ar & tokenid;
+		ar & fromaddress;
+		ar & dstaddress;
+		ar & txhash;
     }
 };
 
@@ -54,6 +76,7 @@ public:
 
 	int64_t SetToken(uint64_t nBlockHeight, const TokenInfo& cTokenInfo);
 	TokenInfo* GetToken(int64_t nTokenId);
+	TokenInfo* GetToken(const std::string& strTokenAddress);
 	std::map<int64_t, TokenInfo> GetTokens();
 
 	int64_t SetAddressId(uint64_t nBlockHeight, const std::string& strAddress);
@@ -70,8 +93,12 @@ public:
 
 	void UnlockBalance(uint64_t nBlockHeight);
 
+	bool SetTokenHistory(uint64_t height, const std::string& hash, const TokenHistory& history);
+	bool WriteLeveldb(uint64_t height);
+
 private:
 	uint64_t UnlockBalance(uint64_t nBlockHeight, int64_t nTokenId, int64_t nAddressId);
+	bool EraseLeveldb(uint64_t height);
 
 private:
 	dbKV<int64_t, TokenInfo> dbToken;
@@ -79,6 +106,8 @@ private:
 	dbKV<std::string, int64_t> dbAddressId;
 	std::map<int64_t, dbKV<int64_t, uint64_t>> mapdbBalance;
 	std::map<int64_t, dbKV<int64_t, std::map<uint64_t, uint64_t>>> mapdbLockBalance;
+
+	std::map<uint64_t, std::map<std::string, TokenHistory>> mapHeightTokenHistory;
 	std::string strDataPath;
 };
 

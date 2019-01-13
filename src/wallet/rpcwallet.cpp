@@ -38,9 +38,13 @@
 #include "../lbtc.pb.h"
 #include "../dpos_db.h"
 #include "../module.h"
+#include "../token_evaluator.h"
+#include "../token_db.h"
+#include "../lbtc.pb.h"
+#include "../dpos_db.h"
+#include "../module.h"
 
 using namespace std;
-
 
 int64_t nWalletUnlockTime;
 static CCriticalSection cs_nWalletUnlockTime;
@@ -1836,7 +1840,7 @@ UniValue gettransaction(const JSONRPCRequest& request)
             "      \"fee\": x.xxx,                     (numeric) The amount of the fee in " + CURRENCY_UNIT + ". This is negative and only available for the \n"
             "                                           'send' category of transactions.\n"
             "      \"abandoned\": xxx                  (bool) 'true' if the transaction has been abandoned (inputs are respendable). Only available for the \n"
-            "                                           'send' category of transactions.\n"            
+            "                                           'send' category of transactions.\n"
             "    }\n"
             "    ,...\n"
             "  ],\n"
@@ -3100,7 +3104,7 @@ UniValue registe(const JSONRPCRequest& request)
     if (!EnsureWalletIsAvailable(request.fHelp))
         return NullUniValue;
 
-    if (request.fHelp || request.params.size() != 2 ) 
+    if (request.fHelp || request.params.size() != 2 )
         throw runtime_error(
             "register delegateAddress delegateName\n"
             "\nuse lbtc address to register as a delegate.\n"
@@ -3158,7 +3162,7 @@ string JsonToStruct(CBitcoinAddress& address, CVoteForgerData& data, const JSONR
         CBitcoinAddress address(keyID);
         if (setAddress.count(address))
             return string("Invalid parameter, duplicated name: ")+ name;
-        
+
         setAddress.insert(address);
         data.forgers.insert(keyID);
     }
@@ -4617,6 +4621,385 @@ UniValue listreceivedvotes(const JSONRPCRequest& request)
     return results;
 }
 
+static uint32_t coins[] = {1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000};
+
+UniValue createtoken(const JSONRPCRequest& request)
+{
+    if (!EnsureWalletIsAvailable(request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() < 6)
+        throw runtime_error(
+            "createtoken tokenSymbol tokenName ownerAddress tokenAddress totalSupply decimal\n"
+            "\ncreate a new token.\n"
+            + HelpRequiringPassphrase() +
+            "\nArguments:\n"
+            "{\n"
+            "1. \"tokenSymbol\"       (string, required) The token symbol.\n"
+            "2. \"tokenName\"         (string, required) The token name.\n"
+            "3. \"ownerAddress\"      (string, required) Creater's address.\n"
+            "4. \"tokenAddress\"      (string, required) Token contract address.\n"
+            "5. \"totalSupply\"       (numeric, required) Total amount of the token.\n"
+            "6. \"decimal\"           (numeric, required) The token fund amount decimal.\n"
+            "}\n"
+            "\nResult:\n"
+            "\"result\"               (string) The result description.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("createtoken", "\"tokenSymbol\" \"tokenName\" \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" \"1LtvqCaApEdUGFkpKMM4MstjcaL4dKg8SP\" \"100000000\" \"2\"")
+            + HelpExampleRpc("createtoken", "\"tokenSymbol\", \"tokenName\", \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"1LtvqCaApEdUGFkpKMM4MstjcaL4dKg8SP\", \"100000000\", \"2\"")
+        );
+
+    int32_t digits = atoll(request.params[5].get_str().c_str());
+    int64_t totalamount = atoll(request.params[4].get_str().c_str());
+    if(totalamount < 0 || totalamount > 100000000000)
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid totalamount");
+    if(digits < 0 || digits > 8)
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid digits");
+
+    LbtcPbMsg::CreateTokenMsg pbTokenMsg;
+    pbTokenMsg.set_opid(CREATETOKEN);
+    pbTokenMsg.set_symbol(request.params[0].get_str());
+    pbTokenMsg.set_name(request.params[1].get_str());
+    pbTokenMsg.set_tokenaddress(request.params[3].get_str());
+    pbTokenMsg.set_totalamount((uint64_t)coins[digits] * totalamount);
+    pbTokenMsg.set_digits((uint32_t)digits);
+
+    std::string strErr = IsValid(pbTokenMsg);
+    if(strErr.empty() == false)
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, strErr);
+
+    std::string strMsg;
+    pbTokenMsg.SerializeToString(&strMsg);
+
+    if(DposDB::GetInstance()->GetAddressName(request.params[2].get_str()).empty())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Address has not registe name");
+
+    CBitcoinAddress fromAddress(request.params[2].get_str());
+    if (!fromAddress.IsValid())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid owner address");
+    if( TokenDB::GetInstance()->GetToken(pbTokenMsg.tokenaddress()))
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Token address have been binded another token");
+
+    std::map<int64_t, TokenInfo> mapTokenInfo = TokenDB::GetInstance()->GetTokens();
+    for (auto& item : mapTokenInfo) {
+        if(item.second.symbol == pbTokenMsg.symbol() && item.second.fromAddress == request.params[2].get_str()) {
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Token has registerd by the address");
+        }
+    }
+
+    CWalletTx wtx;
+    vector<unsigned char> opreturn(strMsg.begin(), strMsg.end());
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+    EnsureWalletIsUnlocked();
+    SendWithOpreturn(fromAddress, wtx, OP_CREATE_TOKEN_FEE, TOKEN, opreturn);
+    return wtx.GetHash().GetHex();
+}
+
+UniValue sendtoken(const JSONRPCRequest& request)
+{
+    if (!EnsureWalletIsAvailable(request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() < 4)
+        throw runtime_error(
+            "sendtoken tokenAddress fromAddress toAddress amount changeAddress commnet\n"
+            "\nSent an amount from an address to another address."
+            + HelpRequiringPassphrase() + "\n"
+            "\nArguments:\n"
+            "1. \"tokenAddress\"      (string, required) The token contract address.\n"
+            "2. \"fromAddress\"       (string, required) The address to send funds from.\n"
+            "3. \"toAddress\"         (string, required) The address to send funds to.\n"
+            "4. \"amount\"        (numeric or string, required) The amount to send (transaction fee is added on top).\n"
+            "5. \"changeAddress\"     (string, optional) The change address.\n"
+            "6. \"comment\"           (string, optional) A comment used to store what the transaction is for. \n"
+            "                                     This is not part of the transaction, just kept in your wallet.\n"
+            "\nResult:\n"
+            "\"txid\"                 (string) The transaction id.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("sendtoken", "\"1LtvqCaApEdUGFkpKMM4MstjcaL4dKg8SP\" \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" \"1LtvqCaApEdUGFkpKMM4MstjcaL4dKg8SP\" 0.01 \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" \"Comment\"")
+        );
+
+    TokenDB* ptokendb = TokenDB::GetInstance();
+    TokenInfo* tokenInfo = NULL;
+    if(!(tokenInfo = ptokendb->GetToken(request.params[0].get_str())))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "token address not registed");
+
+    uint64_t amount = 0;
+    if(!ParseFixedPointUnsign(request.params[3].get_str(), tokenInfo->digits, &amount)
+        || amount <= 0
+        || amount > tokenInfo->totalamount) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "invalid amount");
+    }
+
+    LbtcPbMsg::TransferTokenMsg pbTokenMsg;
+    std::string strPbMsg;
+    pbTokenMsg.set_opid(TRANSFRERTOKEN);
+    pbTokenMsg.set_dstaddress(request.params[2].get_str());
+    pbTokenMsg.set_tokenid(tokenInfo->id);
+    pbTokenMsg.set_amount(amount);
+    if(request.params.size() == 6) {
+        pbTokenMsg.set_comment(request.params[5].get_str());
+    }
+
+    int64_t fromAddressId =  ptokendb->GetAddressId(request.params[1].get_str());
+    if(ptokendb->GetBalance(pbTokenMsg.tokenid(), fromAddressId) < amount) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "token balance insufficient");
+    }
+
+    std::string strErr = IsValid(pbTokenMsg);
+    if(strErr.empty() == false)
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, strErr);
+
+    CBitcoinAddress fromAddress(request.params[1].get_str());
+    if (!fromAddress.IsValid()) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid from address");
+    }
+
+    CBitcoinAddress changeAddress;
+
+    if (request.params.size() > 4) {
+        pbTokenMsg.set_comment(request.params[4].get_str());
+    }
+    pbTokenMsg.SerializeToString(&strPbMsg);
+
+    CWalletTx wtx;
+    vector<unsigned char> opreturn(strPbMsg.begin(), strPbMsg.end());
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+    EnsureWalletIsUnlocked();
+    SendWithOpreturn(fromAddress, wtx, OP_SEND_TOKEN_FEE, TOKEN, opreturn);
+    return wtx.GetHash().GetHex();
+}
+
+UniValue locktoken(const JSONRPCRequest& request)
+{
+    if (!EnsureWalletIsAvailable(request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() < 5)
+        throw runtime_error(
+            "locktoken tokenAddress fromAddress toAddress amount changeAddress commnet\n"
+            "\nlock an amount from an address to another address."
+            + HelpRequiringPassphrase() + "\n"
+            "\nArguments:\n"
+            "1. \"tokenAddress\"      (string, required) The token contract address.\n"
+            "2. \"fromAddress\"       (string, required) The address to lock funds from.\n"
+            "3. \"toAddress\"         (string, required) The address to lock funds to.\n"
+            "4. \"amount\"            (string, required) The amount to lock (transaction fee is added on top).\n"
+            "5. \"heights\"           (string, required) Lock heights.\n"
+            "6. \"changeAddress\"     (string, optional) The change address.\n"
+            "7. \"comment\"           (string, optional) A comment used to store what the transaction is for. \n"
+            "                                     This is not part of the transaction, just kept in your wallet.\n"
+            "\nResult:\n"
+            "\"txid\"                 (string) The transaction id.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("locktoken", "\"1LtvqCaApEdUGFkpKMM4MstjcaL4dKg8SP\" \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" \"1LtvqCaApEdUGFkpKMM4MstjcaL4dKg8SP\" 0.01  100 \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" \"Comment\"")
+        );
+
+    TokenDB* ptokendb = TokenDB::GetInstance();
+    TokenInfo* tokenInfo = NULL;
+    if(!(tokenInfo = ptokendb->GetToken(request.params[0].get_str())))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "token address not registed");
+
+    uint64_t amount = 0;
+    if(!ParseFixedPointUnsign(request.params[3].get_str(), tokenInfo->digits, &amount)
+        || amount <= 0
+        || amount > tokenInfo->totalamount) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "invalid amount");
+    }
+
+    if(atoi(request.params[4].get_str().c_str()) <= 0) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "invalid lock blockheight");
+    }
+
+    uint64_t blockheight = 0;
+    {
+        LOCK(cs_main);
+        blockheight = chainActive.Height();
+    }
+
+    LbtcPbMsg::LockTokenMsg pbTokenMsg;
+    std::string strPbMsg;
+    pbTokenMsg.set_opid(LOCKTOKEN);
+    pbTokenMsg.set_dstaddress(request.params[2].get_str());
+    pbTokenMsg.set_tokenid(tokenInfo->id);
+    pbTokenMsg.set_amount(amount);
+    pbTokenMsg.set_expiryheight(atoi(request.params[4].get_str().c_str()) + blockheight);
+    if(request.params.size() == 7) {
+        pbTokenMsg.set_comment(request.params[6].get_str());
+    }
+
+    int64_t fromAddressId =  ptokendb->GetAddressId(request.params[1].get_str());
+    if(ptokendb->GetBalance(pbTokenMsg.tokenid(), fromAddressId) < amount) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "token balance insufficient");
+    }
+
+    std::string strErr = IsValid(pbTokenMsg);
+    if(strErr.empty() == false)
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, strErr);
+
+    CBitcoinAddress fromAddress(request.params[1].get_str());
+    if (!fromAddress.IsValid()) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid from address");
+    }
+
+    CBitcoinAddress changeAddress;
+
+    if (request.params.size() > 5) {
+        pbTokenMsg.set_comment(request.params[5].get_str());
+    }
+    pbTokenMsg.SerializeToString(&strPbMsg);
+
+    CWalletTx wtx;
+
+    vector<unsigned char> opreturn(strPbMsg.begin(), strPbMsg.end());
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+    EnsureWalletIsUnlocked();
+    SendWithOpreturn(fromAddress, wtx, OP_LOCK_TOKEN_FEE, TOKEN, opreturn);
+    return wtx.GetHash().GetHex();
+}
+
+UniValue gettokeninfo(const JSONRPCRequest& request)
+{
+    if (!EnsureWalletIsAvailable(request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() > 1)
+        throw runtime_error(
+            "gettokeninfo \"tokenAddress\" )\n"
+            "\nGet token info."
+            + HelpRequiringPassphrase() + "\n"
+            "\nArguments:\n"
+            "1. \"tokenAddress\"      (string, optional) The token address.\n"
+            "\nResult:\n"
+            "[                        (json array) Token info array.\n"
+            "  {\n"
+            "    \"tokenSymbol\"      (string) The token symbol.\n"
+            "    \"tokenName\"        (string) The token name.\n"
+            "    \"ownerAddress\"     (string) Creater's address.\n"
+            "    \"tokenAddress\"     (string) Token address.\n"
+            "    \"decimal\"          (numeric) The token fund amount decimal.\n"
+            "    \"totalSupply\"      (numeric) Total amount of the token.\n"
+            "  }\n"
+            "]\n"
+            "\nExamples:\n"
+            + HelpExampleCli("gettokeninfo", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\"")
+        );
+
+    std::string tokenAddress;
+    if(request.params.size() == 1) {
+        if(CBitcoinAddress(request.params[0].get_str()).IsValid() == false)
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+        tokenAddress = request.params[0].get_str();
+    }
+
+    TokenDB* ptokendb = TokenDB::GetInstance();
+    std::map<int64_t, TokenInfo> mapTokenInfo = ptokendb->GetTokens();
+    UniValue results(UniValue::VARR);
+
+    for (std::map<int64_t, TokenInfo>::iterator it = mapTokenInfo.begin(); it != mapTokenInfo.end(); ++it) {
+        if(tokenAddress.empty() || tokenAddress == it->second.tokenAddress) {
+            UniValue cTokenPiece(UniValue::VOBJ);
+            cTokenPiece.push_back(Pair("tokenSymbol", it->second.symbol.c_str()));
+            cTokenPiece.push_back(Pair("tokenName", it->second.name.c_str()));
+            cTokenPiece.push_back(Pair("ownerAddress", it->second.fromAddress.c_str()));
+            cTokenPiece.push_back(Pair("ownerName", DposDB::GetInstance()->GetAddressName(it->second.fromAddress.c_str()).c_str()));
+            cTokenPiece.push_back(Pair("tokenAddress", it->second.tokenAddress.c_str()));
+            cTokenPiece.push_back(Pair("decimal", it->second.digits));
+            cTokenPiece.push_back(Pair("totalSupply", it->second.totalamount / coins[it->second.digits]));
+            results.push_back(cTokenPiece);
+        }
+    }
+    return results;
+}
+
+UniValue gettokenbalance(const JSONRPCRequest& request)
+{
+    if (!EnsureWalletIsAvailable(request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 2)
+        throw runtime_error(
+            "gettokenbalance \"tokenAddress\" \"useraddress\" )\n"
+            "gettokenbalance \"useraddress\" )\n"
+            "\nGet token balance."
+            + HelpRequiringPassphrase() + "\n"
+            "\nArguments:\n"
+            "1. \"userAddress\"       (string, required) The target address.\n"
+            "2. \"tokenAddress\"      (string, optional) The token contract address.\n"
+            "\nResult:\n"
+            "[                        (json array) Token balance array.\n"
+            "  {\n"
+            "    \"tokenSymbol\"      (string) The token symbol.\n"
+            "    \"availableBalance\" (numeric) Available balance.\n"
+            "    \"lockBalance:\"     (json array) Lock balance array.\n"
+            "    [\n"
+            "      {\n"
+            "        \"expiryHeight\" (numeric) Expiry height.\n"
+            "        \"lockAmount\"   (numeric) Lock token amount.\n"
+            "      }\n"
+            "    ]\n"
+            "  }\n"
+            "]\n"
+            "\nExamples:\n"
+            + HelpExampleCli("gettokenbalance", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\"")
+            + HelpExampleCli("gettokenbalance", "\"1LtvqCaApEdUGFkpKMM4MstjcaL4dKg8SP\" \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\"")
+        );
+
+    std::string strTokenAddress;
+    std::string strUserAddress;
+    strUserAddress = request.params[0].get_str();
+    if(request.params.size() == 2) {
+        strTokenAddress = request.params[1].get_str();
+    }
+
+    if((strTokenAddress.empty() == false && CBitcoinAddress(strTokenAddress).IsValid() == false)
+        || CBitcoinAddress(strUserAddress).IsValid() == false)
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+
+    TokenDB* ptokendb = TokenDB::GetInstance();
+    UniValue results(UniValue::VARR);
+
+    std::map<int64_t, std::string> setTokenId;
+    std::map<int64_t, TokenInfo> mapTokenInfo = ptokendb->GetTokens();
+    for(auto& it : mapTokenInfo) {
+        if(strTokenAddress.empty() == false) {
+            if(strTokenAddress == it.second.tokenAddress) {
+                setTokenId[it.first] = it.second.tokenAddress;
+            }
+        } else {
+            setTokenId[it.first] = it.second.tokenAddress;
+        }
+    }
+
+    uint64_t nAddressId = ptokendb->GetAddressId(strUserAddress);
+    if(nAddressId == 0)
+        return results;
+
+    uint64_t balance = 0;
+    for(auto& it : setTokenId) {
+        balance = ptokendb->GetBalance(it.first, nAddressId);
+        UniValue cTokenPiece(UniValue::VOBJ);
+        cTokenPiece.push_back(Pair("tokenaddress", it.second));
+        cTokenPiece.push_back(Pair("availablebalance", balance));
+
+        UniValue cLockArray(UniValue::VARR);
+        std::map<uint64_t, uint64_t>* mapLockBalance = ptokendb->GetLockBalance(it.first, nAddressId);
+        if (mapLockBalance && mapLockBalance->empty() == false) {
+            for(auto& item : *mapLockBalance) {
+                UniValue cLockPiece(UniValue::VOBJ);
+                cLockPiece.push_back(Pair("expiryheight", item.first));
+                cLockPiece.push_back(Pair("amount", item.second));
+                cLockArray.push_back(cLockPiece);
+            }
+            cTokenPiece.push_back(Pair("lockbalance", cLockArray));
+        }
+
+        results.push_back(cTokenPiece);
+    }
+
+    return results;
+}
+
 
 UniValue generateHolyBlocks(const JSONRPCRequest& request);
 
@@ -4685,6 +5068,11 @@ static const CRPCCommand commands[] =
     { "dpos",               "listreceivedvotes",        &listreceivedvotes,        true,   {"listreceivedvotes", "delegatename"} },
     { "dpos",               "getirreversibleblock",     &getirreversibleblock,     true,   {"getirreversibleblock"} },
     { "dpos",               "registername",             &registername,             true,   {"registername", "name"} },
+    { "dpos",               "createtoken",              &createtoken,              true,   {"createtoken", "tokenname"} },
+    { "dpos",               "sendtoken",                &sendtoken,                true,   {"sendtoken", "tokenname"} },
+    { "dpos",               "locktoken",                &locktoken,                true,   {"locktoken", "tokenname"} },
+    { "dpos",               "gettokeninfo",             &gettokeninfo,             true,   {"gettokeninfo", "tokenname"} },
+    { "dpos",               "gettokenbalance",          &gettokenbalance,          true,   {"gettokenbalance", "tokenname"} },
     { "dpos",               "getaddressname",           &getaddressname,           true,   {"getaddressname", "address"} },
     { "dpos",               "getnameaddress",           &getnameaddress,           true,   {"getnameaddress", "name"} },
     { "govern",             "submitbill",               &submitbill,               true,   {"submitbill"} },

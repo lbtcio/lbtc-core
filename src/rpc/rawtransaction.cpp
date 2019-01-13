@@ -33,6 +33,7 @@
 #include <boost/assign/list_of.hpp>
 
 #include <univalue.h>
+#include "../module.h"
 
 using namespace std;
 
@@ -402,6 +403,7 @@ UniValue gettransactionnew(const JSONRPCRequest& request)
 
     UniValue result(UniValue::VOBJ);
     TxToJSONNew(CTransaction(*tx), hashBlock, result);
+    OpreturnModule::GetInstance().TxToJson(result, *tx);
     return result;
 }
 
