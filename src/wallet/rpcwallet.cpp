@@ -106,6 +106,38 @@ void WalletTxToJSON(const CWalletTx& wtx, UniValue& entry)
         entry.push_back(Pair(item.first, item.second));
 }
 
+string GetNameAddress(const string& name)
+{
+    CKeyID id;
+    auto f = [&id, name](const CKeyID& key, const CRegisterCommitteeData& value) -> bool {
+        bool ret = false;
+        if(value.name == name) {
+            ret = true;
+            id = key;
+        }
+        return ret;
+    };
+
+    if(Vote::GetInstance().GetCommittee().FindRegiste(f)) {
+        return CBitcoinAddress(id).ToString();
+    } else {
+        return string();
+    }
+}
+
+string  GetAddressName(const string& address)
+{
+    string name;
+    CKeyID id;
+    CBitcoinAddress(address).GetKeyID(id);
+
+    CRegisterCommitteeData detail;
+    if(Vote::GetInstance().GetCommittee().GetRegiste(&detail, id)) {
+        name = detail.name;
+    }
+    return name;
+}
+
 string AccountFromValue(const UniValue& value)
 {
     string strAccount = value.get_str();
@@ -450,6 +482,75 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
     return wtx.GetHash().GetHex();
 }
 
+string GetAddress(const string& data)
+{
+    string address = data;
+    if (!CBitcoinAddress(address).IsValid()) {
+        address = GetNameAddress(address);
+        if (!CBitcoinAddress(address).IsValid()) {
+            address = "";
+        }
+    }
+
+    return address;
+}
+
+UniValue sendto(const JSONRPCRequest& request)
+{
+    if (!EnsureWalletIsAvailable(request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() < 2 || request.params.size() > 4)
+        throw runtime_error(
+            "sendto \"address or name\" amount ( \"comment\" \"comment_to\" )\n"
+            "\nSend an amount to a given address or name.\n"
+            + HelpRequiringPassphrase() +
+            "\nArguments:\n"
+            "1. \"address or name\"    (string, required) The bitcoin address or name to send to.\n"
+            "2. \"amount\"             (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
+            "3. \"comment\"            (string, optional) A comment used to store what the transaction is for. \n"
+            "                             This is not part of the transaction, just kept in your wallet.\n"
+            "4. \"comment_to\"         (string, optional) A comment to store the name of the person or organization \n"
+            "                             to which you're sending the transaction. This is not part of the \n"
+            "                             transaction, just kept in your wallet.\n"
+            "\nResult:\n"
+            "\"txid\"                  (string) The transaction id.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("sendto", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1")
+            + HelpExampleCli("sendto", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1 \"donation\" \"seans outpost\"")
+            + HelpExampleRpc("sendto", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", 0.1, \"donation\", \"seans outpost\"")
+        );
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    string saddress = GetAddress(request.params[0].get_str());
+    if(saddress.empty()) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address or name");
+    }
+
+    CBitcoinAddress address(saddress);
+
+    // Amount
+    CAmount nAmount = AmountFromValue(request.params[1]);
+    if (nAmount <= 0)
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
+
+    // Wallet comments
+    CWalletTx wtx;
+    if (request.params.size() > 2 && !request.params[2].isNull() && !request.params[2].get_str().empty())
+        wtx.mapValue["comment"] = request.params[2].get_str();
+    if (request.params.size() > 3 && !request.params[3].isNull() && !request.params[3].get_str().empty())
+        wtx.mapValue["to"]      = request.params[3].get_str();
+
+    bool fSubtractFeeFromAmount = false;
+
+    EnsureWalletIsUnlocked();
+
+    SendMoneyNew(address.Get(), nAmount, fSubtractFeeFromAmount, wtx);
+
+    return wtx.GetHash().GetHex();
+}
+
 UniValue sendfromaddress(const JSONRPCRequest& request)
 {
     if (!EnsureWalletIsAvailable(request.fHelp))
@@ -505,6 +606,70 @@ UniValue sendfromaddress(const JSONRPCRequest& request)
     bool fSubtractFeeFromAmount = false;
     if (request.params.size() > 5)
         fSubtractFeeFromAmount = request.params[5].get_bool();
+
+    EnsureWalletIsUnlocked();
+
+    auto addr = fromAddress.Get();
+    SendMoneyNew(address.Get(), nAmount, fSubtractFeeFromAmount, wtx, &addr);
+
+    return wtx.GetHash().GetHex();
+}
+
+UniValue sendfrom(const JSONRPCRequest& request)
+{
+    if (!EnsureWalletIsAvailable(request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() < 3 || request.params.size() > 5)
+        throw runtime_error(
+            "sendfrom \"from address or name\" \"to address or name\" amount ( \"comment\" \"comment_to\")\n"
+            "\nSend an amount from a given address to a given address or name.\n"
+            + HelpRequiringPassphrase() +
+            "\nArguments:\n"
+            "1. \"from_address or name\"       (string, required) The bitcoin address or name to from to.\n"
+            "2. \"to_address or name\"         (string, required) The bitcoin address or name to send to.\n"
+            "3. \"amount\"                     (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
+            "4. \"comment\"                    (string, optional) A comment used to store what the transaction is for. \n"
+            "                                      This is not part of the transaction, just kept in your wallet.\n"
+            "5. \"comment_to\"                 (string, optional) A comment to store the name of the person or organization \n"
+            "                                      to which you're sending the transaction. This is not part of the \n"
+            "                                      transaction, just kept in your wallet.\n"
+            "\nResult:\n"
+            "\"txid\"                  (string) The transaction id.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("sendfrom", "\"1CKraLMPjXpJwutrsy7MsYxXRigoRBk481\" \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1")
+            + HelpExampleCli("sendfrom", "\"1CKraLMPjXpJwutrsy7MsYxXRigoRBk481\" \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1 \"donation\" \"seans outpost\"")
+            + HelpExampleRpc("sendfrom", "\"1CKraLMPjXpJwutrsy7MsYxXRigoRBk481\", \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"0.1\", \"donation\", \"seans outpost\"")
+        );
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    string sfromaddress = GetAddress(request.params[0].get_str());
+    if(sfromaddress.empty()) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin From address or name");
+    }
+
+    string stoaddress = GetAddress(request.params[1].get_str());
+    if(stoaddress.empty()) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin To address or name");
+    }
+
+    CBitcoinAddress fromAddress(sfromaddress);
+    CBitcoinAddress address(stoaddress);
+
+    // Amount
+    CAmount nAmount = AmountFromValue(request.params[2]);
+    if (nAmount <= 0)
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
+
+    // Wallet comments
+    CWalletTx wtx;
+    if (request.params.size() > 3 && !request.params[3].isNull() && !request.params[2].get_str().empty())
+        wtx.mapValue["comment"] = request.params[3].get_str();
+    if (request.params.size() > 4 && !request.params[4].isNull() && !request.params[3].get_str().empty())
+        wtx.mapValue["to"]      = request.params[4].get_str();
+
+    bool fSubtractFeeFromAmount = false;
 
     EnsureWalletIsUnlocked();
 
@@ -3210,7 +3375,7 @@ string JsonToStruct(CBitcoinAddress& address, CRegisterCommitteeData& data, cons
     data.opcode = 0xc3;
     address = CBitcoinAddress(request.params[0].get_str());
     data.name = request.params[1].get_str();
-    data.url = request.params[2].get_str();
+    //data.url = request.params[2].get_str();
 
     CKeyID id;
     address.GetKeyID(id);
@@ -3421,6 +3586,106 @@ UniValue registercommittee(const JSONRPCRequest& request)
     SendWithOpreturn(address, wtx, OP_REGISTER_COMMITTEE_FEE, opreturn);
 
     return wtx.GetHash().GetHex();
+}
+
+UniValue registername(const JSONRPCRequest& request)
+{
+    if (!EnsureWalletIsAvailable(request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() != 2 )
+        throw runtime_error(
+            "registername address name"
+            "\nregister address name.\n"
+            + HelpRequiringPassphrase() +
+            "\nArguments:\n"
+            "1. \"address\"             (string, required) The lbtc address.\n"
+            "2. \"name\"                (string, required) The name.\n"
+            "\nResult:\n"
+            "\"txid:\"                  (string) The transaction id.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("registername", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" \"testname\" ")
+            + HelpExampleRpc("registername", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"testname\"")
+        );
+
+    CBitcoinAddress address;
+    CRegisterCommitteeData data;
+    string err = JsonToStruct(address, data, request);
+    if(err.empty() == false) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, err);
+    }
+
+    CWalletTx wtx;
+    vector<unsigned char>&& opreturn = StructToData(data);
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+    EnsureWalletIsUnlocked();
+
+    SendWithOpreturn(address, wtx, OP_REGISTER_COMMITTEE_FEE, opreturn);
+
+    return wtx.GetHash().GetHex();
+}
+
+UniValue getnameaddress(const JSONRPCRequest& request)
+{
+    if (!EnsureWalletIsAvailable(request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() != 1)
+        throw runtime_error(
+            "getnameaddress name\n"
+            "\nget the address of the name.\n"
+            + HelpRequiringPassphrase() +
+            "\nArguments:\n"
+            "1. \"name\"                   (string, required) The name of address.\n"
+            "\nResult:\n"
+            "\"{\"\n"
+            "\"    address:\"              (string) The lbtc address.\n"
+            "\"}\"\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getnameaddress", "\"testname\"")
+            + HelpExampleRpc("getnameaddress", "\"testname\"")
+        );
+
+    string address = GetNameAddress(request.params[0].get_str());
+
+    UniValue results(UniValue::VOBJ);
+    if(address.empty() == false) {
+        results.push_back(Pair("address",  address));
+    }
+
+    return results;
+}
+
+UniValue getaddressname(const JSONRPCRequest& request)
+{
+    if (!EnsureWalletIsAvailable(request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() != 1)
+        throw runtime_error(
+            "getaddressname address\n"
+            "\nget the name of the address.\n"
+            + HelpRequiringPassphrase() +
+            "\nArguments:\n"
+            "1. \"address\"                (string, required) The address.\n"
+            "\nResult:\n"
+            "\"{\"\n"
+            "\"    name:\"                 (string) The name of the address.\n"
+            "\"}\"\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getaddressname", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\"")
+            + HelpExampleRpc("getaddressname", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\"")
+        );
+
+    string name = GetAddressName(request.params[0].get_str());
+
+    UniValue results(UniValue::VOBJ);
+    if(name.empty() == false) {
+        results.push_back(Pair("name",  name));
+    }
+
+    return results;
 }
 
 UniValue getcommittee(const JSONRPCRequest& request)
@@ -4562,8 +4827,10 @@ static const CRPCCommand commands[] =
     { "wallet",             "move",                     &movecmd,                  false,  {"fromaccount","toaccount","amount","minconf","comment"} },
 //    { "wallet",             "sendfrom",                 &sendfrom,                 false,  {"fromaccount","toaddress","amount","minconf","comment","comment_to"} },
     { "wallet",             "sendmany",                 &sendmany,                 false,  {"fromaccount","amounts", "fromaddress", "changeaddress", "minconf","comment","subtractfeefrom"} },
-    { "wallet",             "sendtoaddress",            &sendtoaddress,         false,  {"address","amount","comment","comment_to","subtractfeefromamount"} },
-    { "wallet",             "sendfromaddress",          &sendfromaddress,       false,  {"address","amount","comment","comment_to","subtractfeefromamount"} },
+    { "wallet",             "sendtoaddress",            &sendtoaddress,            false,  {"address","amount","comment","comment_to","subtractfeefromamount"} },
+    { "wallet",             "sendto",                   &sendto,                   false,  {"address or name","amount","comment","comment_to"} },
+    { "wallet",             "sendfromaddress",          &sendfromaddress,          false,  {"address","amount","comment","comment_to","subtractfeefromamount"} },
+    { "wallet",             "sendfrom",                 &sendfrom,                 false,  {"address","amount","comment","comment_to"} },
     { "wallet",             "setaccount",               &setaccount,               true,   {"address","account"} },
     { "wallet",             "settxfee",                 &settxfee,                 true,   {"amount"} },
     { "wallet",             "signmessage",              &signmessage,              true,   {"address","message"} },
@@ -4590,10 +4857,13 @@ static const CRPCCommand commands[] =
     { "govern",             "listbillvoters",           &listbillvoters,           true,   {"listbillvoters"} },
     { "govern",             "listvoterbills",           &listvoterbills,           true,   {"listvoterbills"} },
     { "govern",             "registercommittee",        &registercommittee,        true,   {"registercommittee"} },
+    { "govern",             "registername",             &registername,             true,   {"registername"} },
     { "govern",             "votecommittee",            &votecommittee,            true,   {"votecommittee"} },
     { "govern",             "cancelvotecommittee",      &cancelvotecommittee,      true,   {"cancelvotecommittee"} },
     { "govern",             "listcommittees",           &listcommittees,           true,   {"listcommittees"} },
     { "govern",             "getcommittee",             &getcommittee,             true,   {"getcommittee"} },
+    { "govern",             "getnameaddress",           &getnameaddress,           true,   {"getnameaddress"} },
+    { "govern",             "getaddressname",           &getaddressname,           true,   {"getaddressname"} },
     { "govern",             "listcommitteevoters",      &listcommitteevoters,      true,   {"listcommitteevoters"} },
     { "govern",             "listcommitteebills",       &listcommitteebills,       true,   {"listcommitteebills"} },
     { "govern",             "listvotercommittees",      &listvotercommittees,      true,   {"listvotercommittees"} },
