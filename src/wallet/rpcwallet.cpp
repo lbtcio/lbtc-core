@@ -429,6 +429,11 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
     if (!EnsureWalletIsAvailable(request.fHelp))
         return NullUniValue;
 
+    throw runtime_error(
+        "sendtoaddress address amount ( \"comment\" \"comment_to\" subtractfeefromamount )\n"
+        "\nDeleted. It is not available. Replace it with sendto.\n"
+    );
+
     if (request.fHelp || request.params.size() < 2 || request.params.size() > 5)
         throw runtime_error(
             "sendtoaddress \"address\" amount ( \"comment\" \"comment_to\" subtractfeefromamount )\n"
@@ -502,30 +507,32 @@ UniValue sendto(const JSONRPCRequest& request)
 
     if (request.fHelp || request.params.size() < 2 || request.params.size() > 4)
         throw runtime_error(
-            "sendto \"address or name\" amount ( \"comment\" \"comment_to\" )\n"
-            "\nSend an amount to a given address or name.\n"
+            "sendto receiver amount ( \"comment\" \"comment_to\" )\n"
+            "\nSend an amount to receiver.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
-            "1. \"address or name\"    (string, required) The bitcoin address or name to send to.\n"
+            "1. \"receiver\"           (string, required) The bitcoin address or nickname of receiver.\n"
             "2. \"amount\"             (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
             "3. \"comment\"            (string, optional) A comment used to store what the transaction is for. \n"
-            "                             This is not part of the transaction, just kept in your wallet.\n"
+            "                              This is not part of the transaction, just kept in your wallet.\n"
             "4. \"comment_to\"         (string, optional) A comment to store the name of the person or organization \n"
-            "                             to which you're sending the transaction. This is not part of the \n"
-            "                             transaction, just kept in your wallet.\n"
+            "                              to which you're sending the transaction. This is not part of the \n"
+            "                              transaction, just kept in your wallet.\n"
             "\nResult:\n"
             "\"txid\"                  (string) The transaction id.\n"
             "\nExamples:\n"
             + HelpExampleCli("sendto", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1")
             + HelpExampleCli("sendto", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1 \"donation\" \"seans outpost\"")
+            + HelpExampleCli("sendto", "\"receivernickname\" 0.1 \"donation\" \"seans outpost\"")
             + HelpExampleRpc("sendto", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", 0.1, \"donation\", \"seans outpost\"")
+            + HelpExampleRpc("sendto", "\"receivernickname\", 0.1, \"donation\", \"seans outpost\"")
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     string saddress = GetAddress(request.params[0].get_str());
     if(saddress.empty()) {
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address or name");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address or nickname");
     }
 
     CBitcoinAddress address(saddress);
@@ -556,14 +563,19 @@ UniValue sendfromaddress(const JSONRPCRequest& request)
     if (!EnsureWalletIsAvailable(request.fHelp))
         return NullUniValue;
 
+    throw runtime_error(
+        "sendfromaddress sender receiver amount ( \"comment\" \"comment_to\" subtractfeefromamount )\n"
+        "\nDeleted. It is not available. Replace it with sendfrom.\n"
+    );
+
     if (request.fHelp || request.params.size() < 3 || request.params.size() > 6)
         throw runtime_error(
-            "sendfromaddress \"from_address\" \"to_address\" amount ( \"comment\" \"comment_to\" subtractfeefromamount )\n"
+            "sendfromaddress sender receiver amount ( \"comment\" \"comment_to\" subtractfeefromamount )\n"
             "\nSend an amount from a given address to a given address.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
-            "1. \"from_address\"       (string, required) The bitcoin address to from to.\n"
-            "2. \"to_address\"         (string, required) The bitcoin address to send to.\n"
+            "1. \"sender\"             (string, required) The bitcoin address of sender\n"
+            "2. \"receiver\"           (string, required) The bitcoin address of receiver.\n"
             "3. \"amount\"             (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
             "4. \"comment\"            (string, optional) A comment used to store what the transaction is for. \n"
             "                             This is not part of the transaction, just kept in your wallet.\n"
@@ -622,36 +634,38 @@ UniValue sendfrom(const JSONRPCRequest& request)
 
     if (request.fHelp || request.params.size() < 3 || request.params.size() > 5)
         throw runtime_error(
-            "sendfrom \"from address or name\" \"to address or name\" amount ( \"comment\" \"comment_to\")\n"
-            "\nSend an amount from a given address to a given address or name.\n"
+            "sendfrom sender receiver amount ( \"comment\" \"comment_to\")\n"
+            "\nSend an amount from sender to receiver.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
-            "1. \"from_address or name\"       (string, required) The bitcoin address or name to from to.\n"
-            "2. \"to_address or name\"         (string, required) The bitcoin address or name to send to.\n"
-            "3. \"amount\"                     (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
-            "4. \"comment\"                    (string, optional) A comment used to store what the transaction is for. \n"
-            "                                      This is not part of the transaction, just kept in your wallet.\n"
-            "5. \"comment_to\"                 (string, optional) A comment to store the name of the person or organization \n"
-            "                                      to which you're sending the transaction. This is not part of the \n"
-            "                                      transaction, just kept in your wallet.\n"
+            "1. \"sender\"             (string, required) The bitcoin address or nickname of the sender.\n"
+            "2. \"receiver\"           (string, required) The bitcoin address or nickname of the receiver.\n"
+            "3. \"amount\"             (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
+            "4. \"comment\"            (string, optional) A comment used to store what the transaction is for. \n"
+            "                              This is not part of the transaction, just kept in your wallet.\n"
+            "5. \"comment_to\"         (string, optional) A comment to store the name of the person or organization \n"
+            "                              to which you're sending the transaction. This is not part of the \n"
+            "                              transaction, just kept in your wallet.\n"
             "\nResult:\n"
             "\"txid\"                  (string) The transaction id.\n"
             "\nExamples:\n"
             + HelpExampleCli("sendfrom", "\"1CKraLMPjXpJwutrsy7MsYxXRigoRBk481\" \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1")
             + HelpExampleCli("sendfrom", "\"1CKraLMPjXpJwutrsy7MsYxXRigoRBk481\" \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1 \"donation\" \"seans outpost\"")
+            + HelpExampleCli("sendfrom", "\"sendernickname\" \"receivernickname\" 0.1 \"donation\" \"seans outpost\"")
             + HelpExampleRpc("sendfrom", "\"1CKraLMPjXpJwutrsy7MsYxXRigoRBk481\", \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"0.1\", \"donation\", \"seans outpost\"")
+            + HelpExampleRpc("sendfrom", "\"sendernickname\", \"receivernickname\", \"0.1\", \"donation\", \"seans outpost\"")
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     string sfromaddress = GetAddress(request.params[0].get_str());
     if(sfromaddress.empty()) {
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin From address or name");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin From address or nickname");
     }
 
     string stoaddress = GetAddress(request.params[1].get_str());
     if(stoaddress.empty()) {
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin To address or name");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin To address or nickname");
     }
 
     CBitcoinAddress fromAddress(sfromaddress);
@@ -3262,6 +3276,11 @@ UniValue registe(const JSONRPCRequest& request)
     if (!EnsureWalletIsAvailable(request.fHelp))
         return NullUniValue;
 
+    throw runtime_error(
+        "register address name\n"
+        "\nDeleted. It is not available. Replace it with registerdelegate.\n"
+    );
+
     if (request.fHelp || request.params.size() != 2 ) 
         throw runtime_error(
             "register delegateAddress delegateName\n"
@@ -3295,16 +3314,56 @@ UniValue registe(const JSONRPCRequest& request)
     return wtx.GetHash().GetHex();
 }
 
+UniValue registerdelegate(const JSONRPCRequest& request)
+{
+    if (!EnsureWalletIsAvailable(request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() != 2 )
+        throw runtime_error(
+            "registerdelegate address name\n"
+            "\nuse lbtc address to register as a delegate.\n"
+            + HelpRequiringPassphrase() +
+            "\nArguments:\n"
+            "1. \"address\"             (string, required) The lbtc address.\n"
+            "2. \"name\"                (string, required) The delegate name.\n"
+            "\nResult:\n"
+            "\"txid\"                   (string) The transaction id.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("registerdelegate", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" \"delegatename\"")
+            + HelpExampleRpc("registerdelegate", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"delegatename\"")
+        );
+
+    CBitcoinAddress address;
+    CRegisterForgerData data;
+    string err = JsonToStruct(address, data, request);
+    if(err.empty() == false) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, err);
+    }
+
+    CWalletTx wtx;
+    vector<unsigned char>&& opreturn = StructToData(data);
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+    EnsureWalletIsUnlocked();
+
+    SendWithOpreturn(address, wtx, OP_REGISTER_FORGER_FEE, opreturn);
+
+    return wtx.GetHash().GetHex();
+}
+
 string JsonToStruct(CBitcoinAddress& address, CVoteForgerData& data, const JSONRPCRequest& request)
 {
     data.opcode = OP_VOTE;
 
-    address = CBitcoinAddress(request.params[0].get_str());
+    string saddress = GetAddress(request.params[0].get_str());
+    if(saddress.empty()) {
+        return "Invalid Bitcoin address or nickname";
+    }
+
+    address = CBitcoinAddress(saddress);
     CKeyID address_id;
     address.GetKeyID(address_id);
-    if (!address.IsValid()) {
-        return "Invalid Bitcoin address";
-    }
 
     set<CBitcoinAddress> setAddress;
     for (unsigned int idx = 1; idx < request.params.size(); idx++) {
@@ -3336,11 +3395,14 @@ string JsonToStruct(CBitcoinAddress& address, CCancelVoteForgerData& data, const
 {
     data.opcode = OP_REVOKE;
 
-    address = CBitcoinAddress(request.params[0].get_str());
+    string saddress = GetAddress(request.params[0].get_str());
+    if(saddress.empty()) {
+        return "Invalid Bitcoin address or nickname";
+    }
+
+    address = CBitcoinAddress(saddress);
     CKeyID address_id;
     address.GetKeyID(address_id);
-    if (!address.IsValid())
-        return "Invalid Bitcoin address";
 
     set<CBitcoinAddress> setAddress;
     for (unsigned int idx = 1; idx < request.params.size(); idx++) {
@@ -3406,7 +3468,13 @@ string JsonToStruct(CBitcoinAddress& address, CVoteCommitteeData& data, const JS
 {
     string ret;
     data.opcode = 0xc4;
-    address = CBitcoinAddress(request.params[0].get_str());
+
+    string saddress = GetAddress(request.params[0].get_str());
+    if(saddress.empty()) {
+        return "Invalid Bitcoin address or nickname";
+    }
+
+    address = CBitcoinAddress(saddress);
 
     string name = request.params[1].get_str();
     CKeyID committee;
@@ -3442,7 +3510,13 @@ string JsonToStruct(CBitcoinAddress& address, CCancelVoteCommitteeData& data, co
 {
     string ret;
     data.opcode = 0xc5;
-    address = CBitcoinAddress(request.params[0].get_str());
+
+    string saddress = GetAddress(request.params[0].get_str());
+    if(saddress.empty()) {
+        return "Invalid Bitcoin address or nickname";
+    }
+
+    address = CBitcoinAddress(saddress);
 
     string name = request.params[1].get_str();
     CKeyID committee;
@@ -3486,7 +3560,13 @@ string JsonToStruct(CBitcoinAddress& address, CSubmitBillData& data, const JSONR
 {
     string ret;
     data.opcode = 0xc6;
-    address = CBitcoinAddress(request.params[0].get_str());
+
+    string saddress = GetAddress(request.params[0].get_str());
+    if(saddress.empty()) {
+        return "Invalid Bitcoin address or nickname";
+    }
+
+    address = CBitcoinAddress(saddress);
     data.title = request.params[1].get_str();
     data.detail = request.params[2].get_str();
     data.url = request.params[3].get_str();
@@ -3520,7 +3600,13 @@ string JsonToStruct(CBitcoinAddress& address, CVoteBillData& data, const JSONRPC
 {
     string ret;
     data.opcode = 0xc7;
-    address = CBitcoinAddress(request.params[0].get_str());
+
+    string saddress = GetAddress(request.params[0].get_str());
+    if(saddress.empty()) {
+        return "Invalid Bitcoin address or nickname";
+    }
+
+    address = CBitcoinAddress(saddress);
     data.id.SetHex(request.params[1].get_str());
     data.index = (uint8_t)stoi(request.params[2].get_str());
 
@@ -3553,6 +3639,11 @@ UniValue registercommittee(const JSONRPCRequest& request)
 {
     if (!EnsureWalletIsAvailable(request.fHelp))
         return NullUniValue;
+
+    throw runtime_error(
+        "register delegateAddress delegateName\n"
+		"\nDeleted. It is not available. Replace it with registername.\n"
+    );
 
     if (request.fHelp || request.params.size() != 3 )
         throw runtime_error(
@@ -3596,16 +3687,16 @@ UniValue registername(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() != 2 )
         throw runtime_error(
             "registername address name"
-            "\nregister address name.\n"
+            "\nregister address nickname.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
             "1. \"address\"             (string, required) The lbtc address.\n"
-            "2. \"name\"                (string, required) The name.\n"
+            "2. \"name\"                (string, required) The nickname.\n"
             "\nResult:\n"
             "\"txid:\"                  (string) The transaction id.\n"
             "\nExamples:\n"
-            + HelpExampleCli("registername", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" \"testname\" ")
-            + HelpExampleRpc("registername", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"testname\"")
+            + HelpExampleCli("registername", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" \"nickname\" ")
+            + HelpExampleRpc("registername", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"nickname\"")
         );
 
     CBitcoinAddress address;
@@ -3634,17 +3725,17 @@ UniValue getnameaddress(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() != 1)
         throw runtime_error(
             "getnameaddress name\n"
-            "\nget the address of the name.\n"
+            "\nget the address of the nickname.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
-            "1. \"name\"                   (string, required) The name of address.\n"
+            "1. \"name\"                   (string, required) The nickname of address.\n"
             "\nResult:\n"
             "\"{\"\n"
             "\"    address:\"              (string) The lbtc address.\n"
             "\"}\"\n"
             "\nExamples:\n"
-            + HelpExampleCli("getnameaddress", "\"testname\"")
-            + HelpExampleRpc("getnameaddress", "\"testname\"")
+            + HelpExampleCli("getnameaddress", "\"nickname\"")
+            + HelpExampleRpc("getnameaddress", "\"nickname\"")
         );
 
     string address = GetNameAddress(request.params[0].get_str());
@@ -3665,13 +3756,13 @@ UniValue getaddressname(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() != 1)
         throw runtime_error(
             "getaddressname address\n"
-            "\nget the name of the address.\n"
+            "\nget the nickname of the address.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
             "1. \"address\"                (string, required) The address.\n"
             "\nResult:\n"
             "\"{\"\n"
-            "\"    name:\"                 (string) The name of the address.\n"
+            "\"    name:\"                 (string) The nickname of the address.\n"
             "\"}\"\n"
             "\nExamples:\n"
             + HelpExampleCli("getaddressname", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\"")
@@ -3742,17 +3833,19 @@ UniValue votecommittee(const JSONRPCRequest& request)
 
     if (request.fHelp || request.params.size() !=2)
         throw runtime_error(
-            "votecommittee address committeename\n"
+            "votecommittee voter committeename\n"
             "\nvote committee.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
-            "1. \"address\"             (string, required) The lbtc address.\n"
+            "1. \"voter\"               (string, required) The lbtc address or nickname of the voter.\n"
             "2. \"committeename\"       (string, required) The committee name to be voting.\n"
             "\nResult:\n"
             "\"txid:\"                  (string) The transaction id.\n"
             "\nExamples:\n"
-            + HelpExampleCli("votecommittee", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" \"testname\"")
-            + HelpExampleRpc("votecommittee", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"testname\"")
+            + HelpExampleCli("votecommittee", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" \"committee\"")
+            + HelpExampleCli("votecommittee", "\"voternickname\" \"committee\"")
+            + HelpExampleRpc("votecommittee", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"committee\"")
+            + HelpExampleRpc("votecommittee", "\"voternickname\", \"committee\"")
         );
 
     CBitcoinAddress address;
@@ -3779,17 +3872,19 @@ UniValue cancelvotecommittee(const JSONRPCRequest& request)
 
     if (request.fHelp || request.params.size() !=2)
         throw runtime_error(
-            "cancelvotecommittee address committeename\n"
+            "cancelvotecommittee voter committeename\n"
             "\ncancel vote committee.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
-            "1. \"address\"             (string, required) The lbtc address.\n"
+            "1. \"voter\"               (string, required) The lbtc address or nickname of the voter.\n"
             "2. \"committeename\"       (string, required) The committee name to be cancel voting.\n"
             "\nResult:\n"
             "\"txid:\"                  (string) The transaction id.\n"
             "\nExamples:\n"
-            + HelpExampleCli("cancelvotecommittee", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" \"testname\"")
-            + HelpExampleRpc("cancelvotecommittee", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"testname\"")
+            + HelpExampleCli("cancelvotecommittee", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" \"committee\"")
+            + HelpExampleCli("cancelvotecommittee", "\"voternickname\" \"committee\"")
+            + HelpExampleRpc("cancelvotecommittee", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"committee\"")
+            + HelpExampleRpc("cancelvotecommittee", "\"voternickname\", \"committee\"")
         );
 
     CBitcoinAddress address;
@@ -3970,11 +4065,11 @@ UniValue listvotercommittees(const JSONRPCRequest& request)
 
     if (request.fHelp || request.params.size() != 1)
         throw runtime_error(
-            "listvotercommittees address\n"
+            "listvotercommittees voter\n"
             "\nlist the voted committees.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
-            "1. \"address\"                 (string, required) The address of voter.\n"
+            "1. \"voter\"                   (string, required) The address or nickname of the voter.\n"
             "\nResult:\n"
             "\"[\"\n"
             "\"    {\"\n"
@@ -3984,10 +4079,17 @@ UniValue listvotercommittees(const JSONRPCRequest& request)
             "\"]\"\n"
             "\nExamples:\n"
             + HelpExampleCli("listvotercommittees", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\"")
+            + HelpExampleCli("listvotercommittees", "\"voternickname\"")
             + HelpExampleRpc("listvotercommittees", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\"")
+            + HelpExampleRpc("listvotercommittees", "\"voternickname\"")
         );
 
-    CBitcoinAddress address(request.params[0].get_str());
+    string saddress = GetAddress(request.params[0].get_str());
+    if(saddress.empty()) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address or nickname");
+    }
+
+    CBitcoinAddress address(saddress);
     CKeyID voterid;
     address.GetKeyID(voterid);
 
@@ -4021,11 +4123,11 @@ UniValue submitbill(const JSONRPCRequest& request)
 
     if (request.fHelp || request.params.size() < 7 )
         throw runtime_error(
-            "submitbill address title detail url endtime options\n"
+            "submitbill submiter title detail url endtime options\n"
             "\nsubmit bill.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
-            "1. \"address\"             (string, required) The lbtc address.\n"
+            "1. \"submiter\"            (string, required) The lbtc address or nickname of the submiter.\n"
             "2. \"title\"               (string, required) The bill title. The title not allow empty and the max length of title is 128 bytes.\n"
             "3. \"detail\"              (string, required) The bill detail infomation. The max length of detail is 256 bytes.\n"
             "4. \"url\"                 (string, required) The bill related url. The max length of url  is 256 bytes.\n"
@@ -4076,18 +4178,20 @@ UniValue votebill(const JSONRPCRequest& request)
 
     if (request.fHelp || request.params.size() !=3)
         throw runtime_error(
-            "votebill address billid billoptionindex\n"
+            "votebill voter billid billoptionindex\n"
             "\nvote bill.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
-            "1. \"address\"             (string, required) The lbtc address.\n"
+            "1. \"voter\"               (string, required) The lbtc address or nickname of the voter.\n"
             "2. \"billid\"              (string, required) The bill id voted.\n"
             "3. \"billoptionindex\"     (number, required) The index of this bill option.\n"
             "\nResult:\n"
             "\"txid:\"                  (string) The transaction id.\n"
             "\nExamples:\n"
             + HelpExampleCli("votebill", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" \"c32418e7537b085bbf2cbada63320979c4e72936\" \"1\"")
+            + HelpExampleCli("votebill", "\"voternickname\" \"c32418e7537b085bbf2cbada63320979c4e72936\" \"1\"")
             + HelpExampleRpc("votebill", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"c32418e7537b085bbf2cbada63320979c4e72936\", \"1\"")
+            + HelpExampleRpc("votebill", "\"voternickname\", \"c32418e7537b085bbf2cbada63320979c4e72936\", \"1\"")
         );
 
     CBitcoinAddress address;
@@ -4224,11 +4328,11 @@ UniValue listvoterbills(const JSONRPCRequest& request)
 
     if (request.fHelp || request.params.size() != 1)
         throw runtime_error(
-            "listvoterbills address\n"
+            "listvoterbills voter\n"
             "\nlist the voted bills.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
-            "1. \"address\"                 (string, required) The address of voter.\n"
+            "1. \"voter\"                         (string, required) The address or nickname of voter.\n"
             "\nResult:\n"
             "\"[\"\n"
             "\"    {\"\n"
@@ -4238,10 +4342,17 @@ UniValue listvoterbills(const JSONRPCRequest& request)
             "\"]\"\n"
             "\nExamples:\n"
             + HelpExampleCli("listvoterbills", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\"")
+            + HelpExampleCli("listvoterbills", "\"voternickname\"")
             + HelpExampleRpc("listvoterbills", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\"")
+            + HelpExampleRpc("listvoterbills", "\"voternickname\"")
         );
 
-    CBitcoinAddress address(request.params[0].get_str());
+    string saddress = GetAddress(request.params[0].get_str());
+    if(saddress.empty()) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address or nickname");
+    }
+
+    CBitcoinAddress address(saddress);
     CKeyID voterid;
     address.GetKeyID(voterid);
 
@@ -4349,6 +4460,11 @@ UniValue vote(const JSONRPCRequest& request) {
     if (!EnsureWalletIsAvailable(request.fHelp))
         return NullUniValue;
 
+    throw runtime_error(
+        "vote voter delegat1 deleagetn\n"
+        "\nDeleted. It is not available. Replace it with votedelegate.\n"
+    );
+
     if (request.fHelp || request.params.size() < 2)
         throw runtime_error(
             "vote address delegateName1 deleagetNamen\n"
@@ -4386,9 +4502,56 @@ UniValue vote(const JSONRPCRequest& request) {
     return wtx.GetHash().GetHex();
 }
 
+UniValue votedelegate(const JSONRPCRequest& request) {
+    if (!EnsureWalletIsAvailable(request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() < 2)
+        throw runtime_error(
+            "votedelegate voter delegate1 deleagetn\n"
+            "\nvote for delegates，each voting will cost 0.01 lbtc. A lbtc voter can only vote for 51 delegates.\n"
+            + HelpRequiringPassphrase() +
+            "\nArguments:\n"
+            "1. \"voter\"               (string, required) The lbtc address or nickname of the voter.\n"
+            "2. \"delegate\"            (string, required) The name of delegate 1.\n"
+            "3. \"delegaten\"           (string, required) The name of delegate N.\n"
+            "\nResult:\n"
+            "\"txid\"                   (string) The transaction id.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("votedelegate", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" \"delegater1\"")
+            + HelpExampleCli("votedelegate", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" \"delegater2\" \"delegater3\"")
+            + HelpExampleCli("votedelegate", "\"voternickname\" \"delegater2\" \"delegater3\"")
+            + HelpExampleRpc("votedelegate", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"delegater1\"")
+            + HelpExampleRpc("votedelegate", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"delegater2\", \"delegater3\"")
+            + HelpExampleRpc("votedelegate", "\"voternickname\", \"delegater2\", \"delegater3\"")
+       );
+
+    CBitcoinAddress address;
+    CVoteForgerData data;
+    string err = JsonToStruct(address, data, request);
+    if(err.empty() == false) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, err);
+    }
+
+    CWalletTx wtx;
+    vector<unsigned char>&& opreturn = StructToData(data);
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+    EnsureWalletIsUnlocked();
+
+    SendWithOpreturn(address, wtx, OP_VOTE_FORGER_FEE, opreturn);
+
+    return wtx.GetHash().GetHex();
+}
+
 UniValue cancelvote(const JSONRPCRequest& request) {
     if (!EnsureWalletIsAvailable(request.fHelp))
         return NullUniValue;
+
+    throw runtime_error(
+        "cancelvote voter delegate1 deleagetn\n"
+        "\nDeleted. It is not available. Replace it with cancelvotedelegate.\n"
+    );
 
     if (request.fHelp || request.params.size() < 2)
         throw runtime_error(
@@ -4407,6 +4570,49 @@ UniValue cancelvote(const JSONRPCRequest& request) {
             + HelpExampleCli("cancelvote", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" \"delegater2\" \"delegater3\"")
             + HelpExampleRpc("cancelvote", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"delegater1\"")
             + HelpExampleRpc("cancelvote", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"delegater2\", \"delegater3\"")
+       );
+
+    CBitcoinAddress address;
+    CCancelVoteForgerData data;
+    string err = JsonToStruct(address, data, request);
+    if(err.empty() == false) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, err);
+    }
+
+    CWalletTx wtx;
+    vector<unsigned char>&& opreturn = StructToData(data);
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+    EnsureWalletIsUnlocked();
+
+    SendWithOpreturn(address, wtx, OP_CANCEL_VOTE_FORGER_FEE, opreturn);
+
+    return wtx.GetHash().GetHex();
+}
+
+UniValue cancelvotedelegate(const JSONRPCRequest& request) {
+    if (!EnsureWalletIsAvailable(request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() < 2)
+        throw runtime_error(
+            "cancelvotedelegate voter delegate1 deleagetn\n"
+            "\ncancelvote delegates which voted by this voter.This address can only cancelvote"
+            "\nthose delegates which voted by this voter.\n"
+            + HelpRequiringPassphrase() +
+            "\nArguments:\n"
+            "1. \"voter\"               (string, required) The LBTC address or nickname of the voter.\n"
+            "2. \"delegate1\"           (string, required) The delegate name cancelvoted.\n"
+            "3. \"delegaten\"           (string, required) The delegate name cancelvoted.\n"
+            "\nResult:\n"
+            "\"txid\"                   (string) The transaction id.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("cancelvotedelegate", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" \"delegater1\"")
+            + HelpExampleCli("cancelvotedelegate", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" \"delegater2\" \"delegater3\"")
+            + HelpExampleCli("cancelvotedelegate", "\"voternickname\" \"delegater2\" \"delegater3\"")
+            + HelpExampleRpc("cancelvotedelegate", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"delegater1\"")
+            + HelpExampleRpc("cancelvotedelegate", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"delegater2\", \"delegater3\"")
+            + HelpExampleRpc("cancelvotedelegate", "\"voternickname\", \"delegater2\", \"delegater3\"")
        );
 
     CBitcoinAddress address;
@@ -4669,28 +4875,87 @@ UniValue listvoteddelegates(const JSONRPCRequest& request)
     if (!EnsureWalletIsAvailable(request.fHelp))
         return NullUniValue;
 
+    throw runtime_error(
+        "listvoteddelegates voter\n"
+        "\nDeleted. It is not available. Replace it with listvoterdelegates.\n"
+    );
+
     if (request.fHelp || request.params.size() != 1)
         throw runtime_error(
-            "listvoteddelegates address\n"
-            "\nlist all the delegates voted by this address.\n"
+            "listvoteddelegates voter\n"
+            "\nlist all the delegates voted by the voter.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
-            "1. \"address\"             (string, required) The lbtc address.\n"
+            "1. \"voter\"                   (string, required) The lbtc address or nickname of the voter.\n"
             "\nResult:\n"
             "[\n"
             "  {\n"
-            "     \"name\"              (string) The voted delegate name.\n"
-            "     \"delegate\"          (string) The voted delegate address.\n"
+            "     \"name\"                  (string) The voted delegate name.\n"
+            "     \"delegate\"              (string) The voted delegate address.\n"
             "  }\n"
             "]\n"
             "\nExamples:\n"
             + HelpExampleCli("listvoteddelegates", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\"")
+            + HelpExampleCli("listvoteddelegates", "\"voternickname\"")
             + HelpExampleRpc("listvoteddelegates", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\"")
+            + HelpExampleRpc("listvoteddelegates", "\"voternickname\"")
         );
 
-    CBitcoinAddress address(request.params[0].get_str());
-    if (!address.IsValid())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
+    string saddress = GetAddress(request.params[0].get_str());
+    if(saddress.empty()) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address or nickname");
+    }
+
+    CBitcoinAddress address(saddress);
+
+    UniValue results(UniValue::VARR);
+    CKeyID keyID;
+    address.GetKeyID(keyID);
+
+    auto result = Vote::GetInstance().GetVotedDelegates(keyID);
+    for(auto& i : result)
+    {
+        UniValue entry(UniValue::VOBJ);
+        entry.push_back(Pair("name", Vote::GetInstance().GetDelegate(i)));
+        entry.push_back(Pair("delegate", CBitcoinAddress(i).ToString() ));
+        results.push_back(entry);
+    }
+
+    return results;
+}
+
+UniValue listvoterdelegates(const JSONRPCRequest& request)
+{
+    if (!EnsureWalletIsAvailable(request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() != 1)
+        throw runtime_error(
+            "listvoterdelegates voter\n"
+            "\nlist all the delegates voted by this voter.\n"
+            + HelpRequiringPassphrase() +
+            "\nArguments:\n"
+            "1. \"voter\"                   (string, required) The lbtc address or nickname of the voter.\n"
+            "\nResult:\n"
+            "[\n"
+            "  {\n"
+            "     \"name\"                  (string) The voted delegate name.\n"
+            "     \"delegate\"              (string) The voted delegate address.\n"
+            "  }\n"
+            "]\n"
+            "\nExamples:\n"
+            + HelpExampleCli("listvoterdelegates", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\"")
+            + HelpExampleCli("listvoterdelegates", "\"voternickname\"")
+            + HelpExampleRpc("listvoterdelegates", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\"")
+            + HelpExampleRpc("listvoterdelegates", "\"voternickname\"")
+        );
+
+    string saddress = GetAddress(request.params[0].get_str());
+    if(saddress.empty()) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address or nickname");
+    }
+
+    CBitcoinAddress address(saddress);
 
     UniValue results(UniValue::VARR);
     CKeyID keyID;
@@ -4747,9 +5012,53 @@ UniValue listreceivedvotes(const JSONRPCRequest& request)
     if (!EnsureWalletIsAvailable(request.fHelp))
         return NullUniValue;
 
+    throw runtime_error(
+        "listreceivedvotes delegate\n"
+        "\nDeleted. It is not available. Replace it with listdelegatevoters.\n"
+    );
+
     if (request.fHelp || request.params.size() != 1)
         throw runtime_error(
             "listreceivedvotes delegateName\n"
+            "\nlist the all the addresses which vote the delegate.\n"
+            + HelpRequiringPassphrase() +
+            "\nArguments:\n"
+            "1. \"delegate\"          (string, required) The delegate name.\n"
+            "\nResult:\n"
+            "[\n"
+            "   \"address\"           (string) The addresses which vote the delegate.\n"
+            "]\n"
+            "\nExamples:\n"
+            + HelpExampleCli("listreceivedvotes", "\"delegatename\"")
+            + HelpExampleRpc("listreceivedvotes", "\"delegatename\"")
+        );
+    Vote& vote = Vote::GetInstance();
+    CKeyID keyID = vote.GetDelegate(request.params[0].get_str());
+    if(keyID.IsNull()) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("delegate name: ") + request.params[0].get_str() + string(" not registe"));
+    }
+
+    CBitcoinAddress address(keyID);
+    if (!address.IsValid())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
+
+    std::set<CKeyID> voters = vote.GetDelegateVoters(keyID);
+    UniValue results(UniValue::VARR);
+    for (auto& v:voters)
+    {
+        results.push_back(CBitcoinAddress(v).ToString());
+    }
+    return results;
+}
+
+UniValue listdelegatevoters(const JSONRPCRequest& request)
+{
+    if (!EnsureWalletIsAvailable(request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() != 1)
+        throw runtime_error(
+            "listdelegatevoters delegateName\n"
             "\nlist the all the addresses which vote the delegate.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
@@ -4759,8 +5068,8 @@ UniValue listreceivedvotes(const JSONRPCRequest& request)
             "   \"address\"           (string) The addresses which vote the delegate.\n"
             "]\n"
             "\nExamples:\n"
-            + HelpExampleCli("listreceivedvotes", "\"test-delegate-name\"")
-            + HelpExampleRpc("listreceivedvotes", "\"test-delegate-name\"")
+            + HelpExampleCli("listdelegatevoters", "\"test-delegate-name\"")
+            + HelpExampleRpc("listdelegatevoters", "\"test-delegate-name\"")
         );
     Vote& vote = Vote::GetInstance();
     CKeyID keyID = vote.GetDelegate(request.params[0].get_str());
@@ -4844,11 +5153,16 @@ static const CRPCCommand commands[] =
     { "dpos",               "register",                 &registe,                  true,   {"register", "address"} },
     { "dpos",               "vote",                     &vote,                     true,   {"vote", "fromaddress", "addresses"} },
     { "dpos",               "cancelvote",               &cancelvote,               true,   {"cancelvote", "fromaddress", "delegatename"} },
+    { "dpos",               "registerdelegate",         &registerdelegate,         true,   {"registerdelegate", "address", "name"} },
+    { "dpos",               "votedelegate",             &votedelegate,             true,   {"votedelegate", "fromaddress", "addresses"} },
+    { "dpos",               "cancelvotedelegate",       &cancelvotedelegate,       true,   {"cancelvotedelegate", "fromaddress", "delegatename"} },
     { "dpos",               "listdelegates",            &listdelegates,            true,   {"listdelegates"} },
     { "dpos",               "getdelegatevotes",         &getdelegatevotes,         true,   {"getdelegatevotes", "delegatename"} },
     { "dpos",               "getdelegatefunds",         &getdelegatefunds,         true,   {"getdelegatefunds", "delegatename"} },
     { "dpos",               "listvoteddelegates",       &listvoteddelegates,       true,   {"listvoteddelegates", "address"} },
     { "dpos",               "listreceivedvotes",        &listreceivedvotes,        true,   {"listreceivedvotes", "delegatename"} },
+    { "dpos",               "listdelegatevoters",       &listdelegatevoters,       true,   {"listdelegatevoters", "delegatename"} },
+    { "dpos",               "listvoterdelegates",       &listvoterdelegates,       true,   {"listvoterdelegates", "address"} },
     { "dpos",               "getirreversibleblock",     &getirreversibleblock,     true,   {"getirreversibleblock"} },
     { "govern",             "submitbill",               &submitbill,               true,   {"submitbill"} },
     { "govern",             "votebill",                 &votebill,                 true,   {"votebill"} },
