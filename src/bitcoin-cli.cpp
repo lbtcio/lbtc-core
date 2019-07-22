@@ -79,7 +79,7 @@ static int AppInitRPC(int argc, char* argv[])
     ParseParameters(argc, argv);
     if (argc<2 || IsArgSet("-?") || IsArgSet("-h") || IsArgSet("-help") || IsArgSet("-version")) {
         //std::string strUsage = strprintf(_("%s RPC client version"), _(PACKAGE_NAME)) + " " + FormatFullVersion() + "\n";
-        std::string strUsage = strprintf(_("LBTC Core Version %s"), "v2.0.1\n");
+        std::string strUsage = strprintf(_("LBTC Core Version %s"), "v2.0.2\n");
         if (!IsArgSet("-version")) {
             strUsage += "\n" + _("Usage:") + "\n" +
                   "  bitcoin-cli [options] <command> [params]  " + strprintf(_("Send command to %s"), _(PACKAGE_NAME)) + "\n" +
