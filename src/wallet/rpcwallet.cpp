@@ -3641,7 +3641,7 @@ UniValue registercommittee(const JSONRPCRequest& request)
         return NullUniValue;
 
     throw runtime_error(
-        "register delegateAddress delegateName\n"
+        "registercommittee delegateAddress delegateName\n"
 		"\nDeleted. It is not available. Replace it with registername.\n"
     );
 
