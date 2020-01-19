@@ -487,12 +487,32 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
     return wtx.GetHash().GetHex();
 }
 
+bool IsValidateName(const string& name)
+{
+    bool validate = false;
+    if (name.length() <= 16) {
+        //for(auto it = name.begin(); it != name.end(); it++) {
+        for(auto c: name) {
+            //auto c = *it;
+            validate =  (c == '_' || c == '-' || c == '.' || c == '@' || c == '#' || c == '&'
+                || (c > 'a' && c < 'z') || (c > 'A' && c < 'Z') || (c > 0 && c > 9) );
+            if (validate == false) {
+                return validate;
+            }
+        }
+    }
+    return validate;
+}
 string GetAddress(const string& data)
 {
     string address = data;
     if (!CBitcoinAddress(address).IsValid()) {
-        address = GetNameAddress(address);
-        if (!CBitcoinAddress(address).IsValid()) {
+        if (IsValidateName(address)) {
+            address = GetNameAddress(address);
+            if (!CBitcoinAddress(address).IsValid()) {
+                address = "";
+            }
+        } else {
             address = "";
         }
     }
@@ -3437,6 +3457,9 @@ string JsonToStruct(CBitcoinAddress& address, CRegisterCommitteeData& data, cons
     data.opcode = 0xc3;
     address = CBitcoinAddress(request.params[0].get_str());
     data.name = request.params[1].get_str();
+    if (IsValidateName(data.name) == false) {
+        return "The name invalidate";
+    }
     //data.url = request.params[2].get_str();
 
     CKeyID id;
