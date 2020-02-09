@@ -1206,7 +1206,7 @@ CAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams)
 
 bool IsInitialBlockDownload()
 {
-    const CChainParams& chainParams = Params();
+    //const CChainParams& chainParams = Params();
 
     // Once this function has returned false, it must remain false.
     static std::atomic<bool> latchToFalse{false};
@@ -4586,6 +4586,7 @@ public:
     }
 } instance_of_cmaincleanup;
 
+#ifdef whh
 static int64_t set_vch(const std::vector<unsigned char>& vch)
 {
   if (vch.empty())
@@ -4602,6 +4603,7 @@ static int64_t set_vch(const std::vector<unsigned char>& vch)
 
   return result;
 }
+#endif
 
 bool IsVotingTxout(const CTxOut& txout, CScript& script)
 {
