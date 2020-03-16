@@ -3414,7 +3414,7 @@ static bool AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CValidation
     bool fAlreadyHave = pindex->nStatus & BLOCK_HAVE_DATA;
     //bool fHasMoreWork = (chainActive.Tip() ? pindex->nChainWork > chainActive.Tip()->nChainWork : true);
     bool fHasMoreWork = false;
-    if(chainActive.Tip() == false)
+    if(chainActive.Tip() == NULL)
         fHasMoreWork = true;
     else if(pindex->nChainWork > chainActive.Tip()->nChainWork
         || (pindex->nChainWork == chainActive.Tip()->nChainWork && pindex->nTime > chainActive.Tip()->nTime)) {
@@ -4812,7 +4812,7 @@ bool RepairDPoSData(int64_t nOldBlockHeight, const std::string& strOldBlockHash)
 {
     LOCK(cs_main);    
     CBlockIndex* pblockindex = mapBlockIndex[uint256S(strOldBlockHash)];
-    if(pblockindex == false || pblockindex->nHeight != nOldBlockHeight) {
+    if(pblockindex == NULL || pblockindex->nHeight != nOldBlockHeight) {
         return false; 
     }
 
