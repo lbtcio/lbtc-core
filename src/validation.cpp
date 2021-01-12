@@ -1419,9 +1419,9 @@ struct txoutkey_equal
     }
 };
 
-std::unordered_map<TxoutKeyPtr, TxOutPtr, txoutkey_hash, txoutkey_equal> mapHashTxout(1000000);
+std::unordered_map<TxoutKeyPtr, TxOutPtr, txoutkey_hash, txoutkey_equal> mapHashTxout;
 CCriticalSection cs_mapHashTxout;
-const uint32_t maxIndexVctTxoutKey = 200000;
+const uint32_t maxIndexVctTxoutKey = 20000;
 vector<TxoutKey> vctTxoutKey(maxIndexVctTxoutKey);
 uint32_t indexVctTxoutKey;
 bool fVctTxoutKeyFull = false;
