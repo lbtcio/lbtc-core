@@ -1397,51 +1397,22 @@ int GetSpendHeight(const CCoinsViewCache& inputs)
 }
 
 typedef std::pair<uint256, uint32_t> TxoutKey;
-typedef const TxoutKey* TxoutKeyPtr;
 typedef std::shared_ptr<CTxOut> TxOutPtr;
 
-struct txoutkey_hash
-{
-    std::size_t operator()(TxoutKeyPtr k) const
-    {
-        std::size_t hash = 0;
-        boost::hash_range( hash, k->first.begin(), k->first.end() );
-        hash += k->second;
-        return hash;
-    }
-};
-
-struct txoutkey_equal
-{
-    bool operator()(TxoutKeyPtr a, TxoutKeyPtr b) const
-    {
-        return a->first == b->first && a->second == b->second;
-    }
-};
-
-std::unordered_map<TxoutKeyPtr, TxOutPtr, txoutkey_hash, txoutkey_equal> mapHashTxout;
-CCriticalSection cs_mapHashTxout;
-const uint32_t maxIndexVctTxoutKey = 20000;
-vector<TxoutKey> vctTxoutKey(maxIndexVctTxoutKey);
-uint32_t indexVctTxoutKey;
-bool fVctTxoutKeyFull = false;
+std::map<TxoutKey, TxOutPtr> mapTxout;
+const uint32_t nMaxMapTxoutSize = 20000;
+CCriticalSection csMapTxout;
 
 void PutTxoutCache(const TxoutKey& key, const CTxOut& txout)
 {
-    LOCK(cs_mapHashTxout);
+    LOCK(csMapTxout);
 
-    if(mapHashTxout.find(&key) == mapHashTxout.end()) {
-        if(fVctTxoutKeyFull) {
-            mapHashTxout.erase(&vctTxoutKey[indexVctTxoutKey]);
+    if(mapTxout.find(key) == mapTxout.end()) {
+        if(mapTxout.size() == nMaxMapTxoutSize) {
+            mapTxout.erase(mapTxout.begin());
         }
 
-        vctTxoutKey[indexVctTxoutKey] = key;
-        mapHashTxout[&vctTxoutKey[indexVctTxoutKey]] = make_shared<CTxOut>(txout);
-
-        if(++indexVctTxoutKey == maxIndexVctTxoutKey) {
-            indexVctTxoutKey = 0;
-            fVctTxoutKeyFull = true;
-        }
+        mapTxout[key] = make_shared<CTxOut>(txout);
     }
 
     return;
@@ -1449,10 +1420,10 @@ void PutTxoutCache(const TxoutKey& key, const CTxOut& txout)
 
 TxOutPtr GetTxoutCache(const TxoutKey& key)
 {
-    LOCK(cs_mapHashTxout);
+    LOCK(csMapTxout);
 
-    auto it = mapHashTxout.find(&key);
-    if(it != mapHashTxout.end()) {
+    auto it = mapTxout.find(key);
+    if(it != mapTxout.end()) {
         return it->second;
     } else {
         return TxOutPtr();
