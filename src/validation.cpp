@@ -1433,9 +1433,8 @@ TxOutPtr GetTxoutCache(const TxoutKey& key)
 TxOutPtr GetTxout(const uint256 &txid, uint32_t nTxoutIndex)
 {
     TxOutPtr txout = GetTxoutCache(make_pair(txid, nTxoutIndex));
-
     if(!txout) {
-        LogPrintf("GetTxoutCache txid:%s nTxoutIndex:%ld failed\n", txid.ToString().c_str(), nTxoutIndex);
+        LogPrintf("GetTxoutCache txid:%s nTxoutIndex:%ld not found!\n", txid.ToString().c_str(), nTxoutIndex);
         CTransactionRef tx;
         uint256 hashBlock;
 
