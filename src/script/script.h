@@ -40,6 +40,19 @@ std::vector<unsigned char> ToByteVector(const T& in)
     return std::vector<unsigned char>(in.begin(), in.end());
 }
 
+enum opcodeofopreturn
+{
+    // opcode type of opreturn
+    OP_REGISTE = 0xc0,
+    OP_VOTE = 0xc1,
+    OP_REVOKE = 0xc2,
+    OP_REGISTE_COMMITTEE = 0xc3,
+    OP_VOTE_COMMITTEE = 0xc4,
+    OP_REVOKE_COMMITTEE = 0xc5,
+    OP_SUBMIT_BILL = 0xc6,
+    OP_VOTE_BILL = 0xc7,
+};
+
 /** Script opcodes */
 enum opcodetype
 {
@@ -176,16 +189,6 @@ enum opcodetype
     OP_NOP8 = 0xb7,
     OP_NOP9 = 0xb8,
     OP_NOP10 = 0xb9,
-
-    // user defined op
-    OP_REGISTE = 0xc0,
-    OP_VOTE = 0xc1,
-    OP_REVOKE = 0xc2,
-    OP_REGISTE_COMMITTEE = 0xc3,
-    OP_VOTE_COMMITTEE = 0xc4,
-    OP_REVOKE_COMMITTEE = 0xc5,
-    OP_SUBMIT_BILL = 0xc6,
-    OP_VOTE_BILL = 0xc7,
 
     // template matching params
     OP_SMALLINTEGER = 0xfa,
