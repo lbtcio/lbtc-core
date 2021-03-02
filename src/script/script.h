@@ -51,6 +51,7 @@ enum opcodeofopreturn
     OP_REVOKE_COMMITTEE = 0xc5,
     OP_SUBMIT_BILL = 0xc6,
     OP_VOTE_BILL = 0xc7,
+    OP_MESSAGE = 0xc8,
 };
 
 /** Script opcodes */
