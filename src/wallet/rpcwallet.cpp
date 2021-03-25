@@ -3272,6 +3272,14 @@ static void SendWithOpreturn(const CBitcoinAddress &address, CWalletTx& wtxNew, 
     }
 }
 
+string JsonToStruct(CMessageData& data, const JSONRPCRequest& request)
+{
+    data.opcode = OP_MESSAGE;
+    data.message = request.params[3].get_str();
+    //string ret = CheckStruct(data);
+    return "";
+}
+
 string JsonToStruct(CBitcoinAddress& address, CRegisterForgerData& data, const JSONRPCRequest& request)
 {
     data.opcode = OP_REGISTE;

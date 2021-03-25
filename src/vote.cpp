@@ -13,7 +13,7 @@ typedef boost::unique_lock<boost::shared_mutex> write_lock;
 using namespace std;
 
 Vote::Vote()
-    : mapAddressBalance(100000000)
+    : mapAddressBalance(10000000)
 {
 }
 
@@ -855,6 +855,14 @@ std::map<uint64_t, std::pair<uint64_t, uint64_t>> Vote::GetCoinDistribution(cons
     }
 
     return result;
+}
+
+std::vector<unsigned char> StructToData(const CMessageData& data)
+{
+    CScript script(data.opcode);
+    script << ToByteVector(data.message);
+
+    return ToByteVector(script);
 }
 
 std::vector<unsigned char> StructToData(const CRegisterForgerData& data)

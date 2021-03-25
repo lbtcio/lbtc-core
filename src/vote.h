@@ -17,6 +17,15 @@
 struct COpData{
     uint8_t opcode;
 };
+struct CMessageData : public COpData {
+    std::string message;
+
+    template<class Archive>
+    void serialize(Archive& ar, const unsigned int version)
+    {
+        ar & message;
+    }
+};
 
 struct CRegisterForgerData : public COpData {
     std::string name;
@@ -122,6 +131,7 @@ std::vector<unsigned char> StructToData(const CVoteCommitteeData& data);
 std::vector<unsigned char> StructToData(const CCancelVoteCommitteeData& data);
 std::vector<unsigned char> StructToData(const CSubmitBillData& data);
 std::vector<unsigned char> StructToData(const CVoteBillData& data);
+std::vector<unsigned char> StructToData(const CMessageData& data);
 std::string CheckStruct(const CRegisterForgerData& data);
 std::string CheckStruct(const CVoteForgerData& data);
 std::string CheckStruct(const CCancelVoteForgerData& data);
@@ -130,8 +140,10 @@ std::string CheckStruct(const CVoteCommitteeData& data);
 std::string CheckStruct(const CCancelVoteCommitteeData& data);
 std::string CheckStruct(const CSubmitBillData& data);
 std::string CheckStruct(const CVoteBillData& data);
+std::string CheckStruct(const CMessageData& data);
 
 
+bool DataToStruct(CMessageData& data, const CScript& script);
 bool DataToStruct(CRegisterForgerData& data, const CScript& script);
 bool DataToStruct(CVoteForgerData& data, const CScript& script);
 bool DataToStruct(CCancelVoteForgerData& data, const CScript& script);
