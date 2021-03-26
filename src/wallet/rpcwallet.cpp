@@ -38,6 +38,8 @@
 
 using namespace std;
 
+string JsonToStruct(CMessageData& data, const JSONRPCRequest& request);
+static void SendWithMessage(const CBitcoinAddress &fromaddress, const CBitcoinAddress &destaddress, CAmount amount, CWalletTx& wtxNew, const vector<unsigned char>& opreturn);
 
 int64_t nWalletUnlockTime;
 static CCriticalSection cs_nWalletUnlockTime;
@@ -583,34 +585,24 @@ UniValue sendfromaddress(const JSONRPCRequest& request)
     if (!EnsureWalletIsAvailable(request.fHelp))
         return NullUniValue;
 
-    throw runtime_error(
-        "sendfromaddress sender receiver amount ( \"comment\" \"comment_to\" subtractfeefromamount )\n"
-        "\nDeleted. It is not available. Replace it with sendfrom.\n"
-    );
-
-    if (request.fHelp || request.params.size() < 3 || request.params.size() > 6)
+    if (request.fHelp || request.params.size() > 4 || request.params.size() < 3)
         throw runtime_error(
-            "sendfromaddress sender receiver amount ( \"comment\" \"comment_to\" subtractfeefromamount )\n"
+            "sendfromaddress sender receiver amount ( \"message\" )\n"
             "\nSend an amount from a given address to a given address.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
             "1. \"sender\"             (string, required) The bitcoin address of sender\n"
             "2. \"receiver\"           (string, required) The bitcoin address of receiver.\n"
             "3. \"amount\"             (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
-            "4. \"comment\"            (string, optional) A comment used to store what the transaction is for. \n"
-            "                             This is not part of the transaction, just kept in your wallet.\n"
-            "5. \"comment_to\"         (string, optional) A comment to store the name of the person or organization \n"
-            "                             to which you're sending the transaction. This is not part of the \n"
-            "                             transaction, just kept in your wallet.\n"
-            "6. subtractfeefromamount  (boolean, optional, default=false) The fee will be deducted from the amount being sent.\n"
-            "                             The recipient will receive less bitcoins than you enter in the amount field.\n"
+            "4. \"message\"            (string, optional) A comment message used to store what the transaction is for.\n"
+            "                             This is part of the transaction.\n"
             "\nResult:\n"
             "\"txid\"                  (string) The transaction id.\n"
             "\nExamples:\n"
             + HelpExampleCli("sendfromaddress", "\"1CKraLMPjXpJwutrsy7MsYxXRigoRBk481\" \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1")
-            + HelpExampleCli("sendfromaddress", "\"1CKraLMPjXpJwutrsy7MsYxXRigoRBk481\" \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1 \"donation\" \"seans outpost\"")
-            + HelpExampleCli("sendfromaddress", "\"1CKraLMPjXpJwutrsy7MsYxXRigoRBk481\" \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1 \"\" \"\" true")
-            + HelpExampleRpc("sendfromaddress", "\"1CKraLMPjXpJwutrsy7MsYxXRigoRBk481\", \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"0.1\", \"donation\", \"seans outpost\"")
+            + HelpExampleCli("sendfromaddress", "\"1CKraLMPjXpJwutrsy7MsYxXRigoRBk481\" \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1 \"message\"")
+            + HelpExampleCli("sendfromaddress", "\"1CKraLMPjXpJwutrsy7MsYxXRigoRBk481\" \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1 ")
+            + HelpExampleRpc("sendfromaddress", "\"1CKraLMPjXpJwutrsy7MsYxXRigoRBk481\", \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"0.1\", \"message\"")
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -623,26 +615,25 @@ UniValue sendfromaddress(const JSONRPCRequest& request)
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
 
-    // Amount
     CAmount nAmount = AmountFromValue(request.params[2]);
     if (nAmount <= 0)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
 
-    // Wallet comments
-    CWalletTx wtx;
-    if (request.params.size() > 3 && !request.params[3].isNull() && !request.params[2].get_str().empty())
-        wtx.mapValue["comment"] = request.params[3].get_str();
-    if (request.params.size() > 4 && !request.params[4].isNull() && !request.params[3].get_str().empty())
-        wtx.mapValue["to"]      = request.params[4].get_str();
+    vector<unsigned char> opreturn;
+    if (request.params.size() == 4) {
+        CMessageData data;
+        string err = JsonToStruct(data, request);
+        if(err.empty() == false) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, err);
+        }
 
-    bool fSubtractFeeFromAmount = false;
-    if (request.params.size() > 5)
-        fSubtractFeeFromAmount = request.params[5].get_bool();
+        opreturn = StructToData(data);
+    }
 
     EnsureWalletIsUnlocked();
 
-    auto addr = fromAddress.Get();
-    SendMoneyNew(address.Get(), nAmount, fSubtractFeeFromAmount, wtx, &addr);
+    CWalletTx wtx;
+    SendWithMessage(fromAddress, address, nAmount, wtx, opreturn);
 
     return wtx.GetHash().GetHex();
 }
@@ -3233,6 +3224,46 @@ extern UniValue importwallet(const JSONRPCRequest& request);
 extern UniValue importprunedfunds(const JSONRPCRequest& request);
 extern UniValue removeprunedfunds(const JSONRPCRequest& request);
 extern UniValue importmulti(const JSONRPCRequest& request);
+
+static void SendWithMessage(const CBitcoinAddress &fromaddress, const CBitcoinAddress &destaddress, CAmount amount, CWalletTx& wtxNew, const vector<unsigned char>& message)
+{
+    std::string strError;
+
+    CCoinControl coinControl;
+    coinControl.fAllowOtherInputs = true;
+
+    vector<unsigned char> opdata;
+    vector<unsigned char> *popdata = NULL;
+    if (message.empty() == false) {
+        opdata = pwalletMain->CreateOpReturn(message);
+        if(opdata.empty()) {
+            strError = strprintf("Error: CreateOpReturn");
+            throw JSONRPCError(RPC_WALLET_ERROR, strError);
+        }
+        popdata = &opdata;
+    }
+
+    CReserveKey reservekey(pwalletMain);
+    CAmount nFeeRequired;
+    int nChangePosRet = -1;
+
+    auto fromAddress = fromaddress.Get();
+    vector<CRecipient> vecSend;
+
+    CScript scriptPubKey = GetScriptForDestination(destaddress.Get());
+    CRecipient recipient = {scriptPubKey, amount, false};
+    vecSend.push_back(recipient);
+
+    if ( !pwalletMain->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, &coinControl, true, &fromAddress, popdata)) {
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+
+    CValidationState state;
+    if (!pwalletMain->CommitTransaction(wtxNew, reservekey, g_connman.get(), state)) {
+        strError = strprintf("Error: The transaction was rejected! Reason given: %s", state.GetRejectReason());
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+}
 
 static void SendWithOpreturn(const CBitcoinAddress &address, CWalletTx& wtxNew, uint64_t fee, const vector<unsigned char>& opreturn)
 {
