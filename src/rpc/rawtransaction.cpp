@@ -36,6 +36,32 @@
 
 using namespace std;
 
+string GetOpreturnMessage(const CScript& scriptPubKey)
+{
+    string message;
+    auto iter = scriptPubKey.begin();
+    if( *iter == OP_RETURN) {
+        iter += 1;
+
+        opcodetype opcode;
+        std::vector<unsigned char> vchRet;
+        if (scriptPubKey.GetOp2(iter, opcode, &vchRet)) {
+            if (vchRet.size() > 4) {
+                auto const script = CScript(vchRet.begin() + 4, vchRet.end());
+                auto it = script.begin();
+                if (*it == OP_MESSAGE) {
+                    ++it;
+                    std::vector<unsigned char> vchMessage;
+                    if (script.GetOp2(it, opcode, &vchMessage)) {
+                        message = string(vchMessage.begin(), vchMessage.end());
+                    }
+                }
+            }
+        }
+    }
+    return message;
+}
+
 void ScriptPubKeyToJSON(const CScript& scriptPubKey, UniValue& out, bool fIncludeHex)
 {
     txnouttype type;
@@ -48,6 +74,10 @@ void ScriptPubKeyToJSON(const CScript& scriptPubKey, UniValue& out, bool fInclud
 
     if (!ExtractDestinations(scriptPubKey, type, addresses, nRequired)) {
         out.push_back(Pair("type", GetTxnOutputType(type)));
+        auto message = GetOpreturnMessage(scriptPubKey);
+        if (message.empty() == false ) {
+            out.push_back(Pair("message", message));
+        }
         return;
     }
 
